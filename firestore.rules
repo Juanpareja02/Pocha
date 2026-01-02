@@ -1,133 +1,71 @@
-/**
- * This ruleset enforces a security model based on user ownership and shared access for collaborative game sessions.
- *
- * Core Philosophy:
- * The security model is designed to be highly secure while allowing for flexible collaboration in game lobbies. It operates on two main principles:
- * 1. User Ownership: A user has absolute control over their own profile data and the game lobbies they create.
- * 2. Shared Access: Once a game lobby is created, access to it and its associated game is granted to a specific list of participants (the creator and invited players). This ensures that only members of a game can view or interact with it.
- *
- * Data Structure:
- * Data is organized hierarchically under the `/users/{userId}` collection. This top-level collection holds user profiles. Each user document contains a `gameLobbies` subcollection for the lobbies they create, and each lobby in turn contains a `games` subcollection for the specific game instance. This structure naturally scopes access and simplifies rules.
- *   - /users/{userId} -> User Profile
- *   - /users/{userId}/gameLobbies/{gameLobbyId} -> Game Lobby
- *   - /users/{userId}/gameLobbies/{gameLobbyId}/games/{gameId} -> Game Instance
- *
- * Key Security Decisions:
- * - User Isolation: Users cannot read or list other users' profiles, preventing user enumeration.
- * - Creator-Centric Control: The creator of a game lobby (`creatorId`) has exclusive rights to update or delete the lobby and its associated game.
- * - Participant Access: Players listed in a lobby's `playerIds` array can read lobby and game data. Players in a game's `playerIds` can update the game state (i.e., make a move).
- * - No Global Listing: There are no publicly listable collections. Listing lobbies or games is restricted to the scope of the owner or participants.
- *
- * Denormalization for Authorization:
- * To ensure fast and secure authorization checks, this ruleset relies on denormalized data. Both `GameLobby` and `Game` documents must contain a `playerIds` array. The `GameLobby` also contains a `creatorId`. This eliminates the need for slow, costly, or impossible cross-collection queries in most security rules, making authorization decisions atomic and performant.
- *
- * Structural Segregation:
- * The separation of user profiles (`users`), lobbies (`gameLobbies`), and games (`games`) into distinct collections and subcollections ensures that a single, clear security policy can be applied to all documents at a given path.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // Helper functions to improve readability and maintainability of the rules.
-
-    /**
-     * Returns true if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Returns true if the authenticated user's UID matches the provided userId.
-     * This is the fundamental check for document ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    /**
-     * Returns true if the user is a participant in a GameLobby.
-     * Checks if the user's UID is in the `playerIds` list of an existing document.
-     */
-    function isLobbyParticipant() {
-      return isSignedIn() && resource != null && request.auth.uid in resource.data.playerIds;
+    
+    function isPlayer(gameOrLobby) {
+      return isSignedIn() && request.auth.uid in gameOrLobby.data.playerIds;
     }
 
-    /**
-     * Returns true if the user is the creator of an existing GameLobby.
-     */
-    function isExistingLobbyCreator() {
-      return resource != null && isOwner(resource.data.creatorId);
-    }
-
-    /**
-     * Returns true if the user is a participant in a Game.
-     * Checks if the user's UID is in the `playerIds` list of an existing game document.
-     */
-    function isGameParticipant() {
-      return isSignedIn() && resource != null && request.auth.uid in resource.data.playerIds;
-    }
-
-    /**
-     * Returns true if the user is the creator of the parent lobby for a given game.
-     * This requires a `get()` call to the parent document and should be used sparingly.
-     */
-    function isParentLobbyCreator(userId, gameLobbyId) {
-      let lobbyPath = /databases/$(database)/documents/users/$(userId)/gameLobbies/$(gameLobbyId);
-      return isSignedIn() && get(lobbyPath).data.creatorId == request.auth.uid;
-    }
-
-    /**
-     * Returns true if the user is a participant in the parent lobby for a given game.
-     */
-    function isParentLobbyParticipant(userId, gameLobbyId) {
-      let lobbyPath = /databases/$(database)/documents/users/$(userId)/gameLobbies/$(gameLobbyId);
-      return isSignedIn() && request.auth.uid in get(lobbyPath).data.playerIds;
+    function isCreator(lobby) {
+        return isSignedIn() && request.auth.uid == lobby.data.creatorId;
     }
 
     /**
      * @description Rules for user profile documents.
      * @path /users/{userId}
-     * @allow (create) A new user can create their own profile document if their auth UID matches the document ID.
-     * @deny (create) A user attempts to create a profile for another user's UID.
-     * @principle Enforces self-creation and ownership of user-specific data. Prevents user enumeration.
+     * @allow (read, update) A user can read or update their own profile.
+     * @allow (create) A user can create their own profile.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if false;
+      allow read, update: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow list, delete: if false;
     }
 
     /**
-     * @description Rules for game lobby documents, which are owned by a user.
-     * @path /users/{userId}/gameLobbies/{gameLobbyId}
-     * @allow (create) An authenticated user creates a lobby under their own user path, setting themselves as creator and a player.
-     * @deny (get) A user who is not listed in the `playerIds` array tries to read the lobby.
-     * @principle Enforces creator control for writes and shared access for reads among participants.
+     * @description Rules for game lobby documents.
+     * @path /gameLobbies/{gameLobbyId}
+     * @allow (create) Any signed-in user can create a lobby.
+     * @allow (read) Any player in the lobby can read its data.
+     * @allow (update) Players can be added, and the creator can change the status.
+     * @allow (delete) Only the creator can delete the lobby.
      */
-    match /users/{userId}/gameLobbies/{gameLobbyId} {
-      allow get: if isLobbyParticipant();
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.creatorId == userId && userId in request.resource.data.playerIds;
-      allow update: if isExistingLobbyCreator() && request.resource.data.creatorId == resource.data.creatorId;
-      allow delete: if isExistingLobbyCreator();
+    match /gameLobbies/{gameLobbyId} {
+      allow create: if isSignedIn() 
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.auth.uid in request.resource.data.playerIds;
+      allow read: if isPlayer(resource);
+      allow update: if isPlayer(resource) // Allows players to join
+                    || isCreator(resource); // Allows creator to change status
+      allow delete: if isCreator(resource);
+      allow list: if false; // Do not allow listing all lobbies
     }
 
     /**
-     * @description Rules for game documents, which exist within a lobby.
-     * @path /users/{userId}/gameLobbies/{gameLobbyId}/games/{gameId}
-     * @allow (update) A player listed in the game's `playerIds` updates the game state.
-     * @deny (create) A lobby participant who is not the lobby creator tries to create/start the game.
-     * @principle Secures a child collection based on the parent's state (creator) and its own state (participants).
+     * @description Rules for game documents.
+     * @path /games/{gameId}
+     * @allow (create) Game can only be created by the lobby creator.
+     * @allow (read) Any player in the game can read its state.
+     * @allow (update) Any player in the game can update it (to make a move).
+     * @allow (delete) Only the lobby creator can delete the game.
      */
-    match /users/{userId}/gameLobbies/{gameLobbyId}/games/{gameId} {
-      allow get: if isGameParticipant();
-      allow list: if isParentLobbyParticipant(userId, gameLobbyId);
-      allow create: if isParentLobbyCreator(userId, gameLobbyId) && request.resource.data.lobbyId == gameLobbyId;
-      allow update: if isGameParticipant() && request.resource.data.lobbyId == resource.data.lobbyId;
-      allow delete: if isParentLobbyCreator(userId, gameLobbyId) && resource != null;
+    match /games/{gameId} {
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/gameLobbies/$(request.resource.data.lobbyId)).data.creatorId == request.auth.uid;
+      allow read: if isPlayer(resource);
+      allow update: if isPlayer(resource);
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/gameLobbies/$(resource.data.lobbyId)).data.creatorId == request.auth.uid;
+      allow list: if false; // Do not allow listing all games
     }
   }
 }

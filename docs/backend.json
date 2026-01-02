@@ -1,121 +1,99 @@
+
 {
   "entities": {
-    "GameLobby": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "GameLobby",
-      "type": "object",
-      "description": "Represents a game lobby where players can join before starting a game.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the GameLobby entity."
-        },
-        "accessCode": {
-          "type": "string",
-          "description": "Short code used for players to join the lobby."
-        },
-        "creatorId": {
-          "type": "string",
-          "description": "Reference to the User who created the lobby. (Relationship: User 1:N GameLobby)"
-        },
-        "playerIds": {
-          "type": "array",
-          "description": "References to Users currently in the lobby. (Relationship: User N:N GameLobby)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the lobby was created.",
-          "format": "date-time"
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the game lobby",
-          "format": "string"
-        }
-      },
-      "required": [
-        "id",
-        "accessCode",
-        "creatorId",
-        "playerIds",
-        "createdAt",
-        "status"
-      ]
-    },
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
       "description": "Represents a user of the application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "googleId": {
-          "type": "string",
-          "description": "Google identifier for users who signed up using Google Auth."
-        },
-        "username": {
-          "type": "string",
-          "description": "The display name of the user."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the user.",
-          "format": "email"
-        }
+        "id": { "type": "string", "description": "Unique identifier for the User (matches Firebase Auth UID)." },
+        "username": { "type": "string", "description": "The display name of the user." },
+        "email": { "type": "string", "description": "The email address of the user.", "format": "email" },
+        "avatarUrl": { "type": "string", "description": "URL of the user's avatar image." }
       },
-      "required": [
-        "id"
-      ]
+      "required": ["id", "username"]
     },
-    "Game": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Game",
+    "GameLobby": {
+      "title": "GameLobby",
       "type": "object",
-      "description": "Represents an instance of a game being played.",
+      "description": "Represents a game lobby where players gather before a game starts.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Game entity."
-        },
-        "lobbyId": {
-          "type": "string",
-          "description": "Reference to the GameLobby this game belongs to. (Relationship: GameLobby 1:1 Game)"
-        },
+        "accessCode": { "type": "string", "description": "A short, unique code for players to join the lobby." },
+        "creatorId": { "type": "string", "description": "The UID of the user who created the lobby." },
         "playerIds": {
           "type": "array",
-          "description": "References to Users participating in this game. (Relationship: User N:N Game)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "currentRound": {
-          "type": "number",
-          "description": "The current round number of the game."
+          "description": "An array of UIDs of the players currently in the lobby.",
+          "items": { "type": "string" }
         },
         "status": {
           "type": "string",
-          "description": "The current status of the game (e.g., LOBBY, BETTING, PLAYING, SCORING)."
+          "description": "The current status of the lobby.",
+          "enum": ["LOBBY", "PLAYING", "FINISHED"]
         },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the game was created.",
-          "format": "date-time"
-        }
+        "createdAt": { "type": "string", "description": "Server timestamp of when the lobby was created.", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "lobbyId",
-        "playerIds",
-        "currentRound",
-        "status",
-        "createdAt"
-      ]
+      "required": ["accessCode", "creatorId", "playerIds", "status", "createdAt"]
+    },
+    "Game": {
+      "title": "Game",
+      "type": "object",
+      "description": "Represents the full state of a single game of Pocha.",
+      "properties": {
+        "lobbyId": { "type": "string", "description": "Reference to the GameLobby this game belongs to." },
+        "playerIds": {
+          "type": "array",
+          "description": "Array of UIDs for players participating in this game.",
+          "items": { "type": "string" }
+        },
+        "players": {
+          "type": "array",
+          "description": "Denormalized data for each player in the game for UI rendering.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "isHost": { "type": "boolean" },
+              "avatarUrl": { "type": "string" },
+              "bet": { "type": "number" },
+              "tricksWon": { "type": "number" },
+              "hand": { "type": "array", "items": { "$ref": "#/entities/Card" } },
+              "score": { "type": "number" }
+            },
+            "required": ["id", "name", "isHost", "tricksWon", "hand", "score"]
+          }
+        },
+        "status": { "type": "string", "description": "The current phase of the game.", "enum": ["BETTING", "PLAYING", "SCORING", "FINISHED"] },
+        "dealerId": { "type": "string", "description": "UID of the current dealer." },
+        "currentPlayerId": { "type": "string", "description": "UID of the player whose turn it is." },
+        "currentTrick": {
+            "type": "array",
+            "description": "The cards played in the current trick.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "playerId": { "type": "string" },
+                    "card": { "$ref": "#/entities/Card" }
+                },
+                "required": ["playerId", "card"]
+            }
+        },
+        "trumpSuit": { "type": "string", "description": "The trump suit for the current round.", "enum": ["oros", "copas", "espadas", "bastos"] },
+        "currentRound": { "type": "number", "description": "The current round number." },
+        "roundSequence": { "type": "array", "description": "Sequence of card counts for all rounds.", "items": { "type": "number" } },
+        "createdAt": { "type": "string", "description": "Server timestamp of when the game was created.", "format": "date-time" }
+      },
+      "required": ["lobbyId", "playerIds", "players", "status", "dealerId", "currentPlayerId", "currentTrick", "currentRound", "roundSequence", "createdAt"]
+    },
+    "Card": {
+        "title": "Card",
+        "type": "object",
+        "description": "A single playing card from the Spanish deck.",
+        "properties": {
+            "suit": { "type": "string", "enum": ["oros", "copas", "espadas", "bastos"] },
+            "rank": { "type": "string", "enum": ["1", "2", "3", "4", "5", "6", "7", "S", "C", "R"] }
+        },
+        "required": ["suit", "rank"]
     }
   },
   "auth": {
@@ -130,63 +108,29 @@
         "path": "/users/{userId}",
         "definition": {
           "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Collection to store user profiles.  Uses path-based ownership.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
+          "schema": { "$ref": "#/entities/User" },
+          "description": "Collection to store user profiles. The document ID is the user's UID.",
+          "params": [{ "name": "userId", "description": "The user's unique authentication ID." }]
         }
       },
       {
-        "path": "/users/{userId}/gameLobbies/{gameLobbyId}",
+        "path": "/gameLobbies/{gameLobbyId}",
         "definition": {
           "entityName": "GameLobby",
-          "schema": {
-            "$ref": "#/backend/entities/GameLobby"
-          },
-          "description": "Subcollection to store game lobbies created by a specific user. Includes denormalized 'creatorId' and 'playerIds' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user (creator of the lobby)."
-            },
-            {
-              "name": "gameLobbyId",
-              "description": "The unique identifier of the game lobby."
-            }
-          ]
+          "schema": { "$ref": "#/entities/GameLobby" },
+          "description": "Top-level collection for game lobbies. Accessible via a unique code.",
+          "params": [{ "name": "gameLobbyId", "description": "The unique ID of the game lobby." }]
         }
       },
       {
-        "path": "/users/{userId}/gameLobbies/{gameLobbyId}/games/{gameId}",
+        "path": "/games/{gameId}",
         "definition": {
           "entityName": "Game",
-          "schema": {
-            "$ref": "#/backend/entities/Game"
-          },
-          "description": "Subcollection to store games associated with a specific game lobby. Includes denormalized 'playerIds' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user (creator of the lobby)."
-            },
-            {
-              "name": "gameLobbyId",
-              "description": "The unique identifier of the game lobby."
-            },
-            {
-              "name": "gameId",
-              "description": "The unique identifier of the game."
-            }
-          ]
+          "schema": { "$ref": "#/entities/Game" },
+          "description": "Top-level collection for active game states.",
+          "params": [{ "name": "gameId", "description": "The unique ID of the game." }]
         }
       }
-    ],
-    "reasoning": "This design prioritizes authorization independence and secure list operations (QAPs). It leverages path-based ownership for user-specific data (GameLobbies) and denormalization of authorization data within game lobbies and games themselves. The structure is segregated to ensure homogeneous security requirements for each collection.\n\n1.  **Authorization Independence:** The `GameLobby` includes the `creatorId` and `playerIds`, effectively denormalizing the authorization context. This eliminates the need for `get()` calls in security rules to check the parent user's ownership, enabling atomic operations.\n\n2.  **Secure List Operations (QAPs):**  The `GameLobbies` are created as subcollections of `/users/{userId}`. This inherently limits listing to a user's own lobbies (or requires admin privileges). The games created inside a given lobby also inherit the authorization context (via denormalized `playerIds`) and limit `list` access.\n\n3.  **DBAC (Database-Based Access Control):** No custom claims are used. Authorization relies solely on `request.auth.uid` and the data stored in Firestore.\n\n4.  **Structural Segregation:**  All `GameLobby` documents in a given collection share the same security requirements, simplifying rules.\n\n5.  **Access Modeling:** User-owned `GameLobby` entities are structured using hierarchical paths (`/users/{userId}/gameLobbies/{gameLobbyId}`). This pattern ensures clear ownership and simplifies security rules based on path matching.\n\n6. **Radical Consistency:** The naming conventions used are consistent (e.g., `creatorId`, `playerIds`)."
+    ]
   }
 }

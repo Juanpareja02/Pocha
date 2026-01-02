@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/icons";
+import { useAuth, useUser } from "@/firebase";
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { useEffect } from "react";
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" {...props}>
@@ -16,11 +19,36 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function AuthForm() {
   const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
 
-  const handleSignIn = () => {
-    // Placeholder for authentication logic
-    router.push("/mode-select");
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push("/mode-select");
+    }
+  }, [user, isUserLoading, router]);
+
+
+  const handleAnonymousSignIn = () => {
+    initiateAnonymousSignIn(auth);
   };
+  
+  const handleGoogleSignIn = () => {
+    // Placeholder for Google authentication logic
+    // For now, we will just use anonymous sign in as a placeholder.
+    initiateAnonymousSignIn(auth);
+  };
+
+
+  if (isUserLoading || user) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen">
+            <Logo className="w-16 h-16 text-primary animate-pulse" />
+            <p className="text-muted-foreground mt-4">Cargando...</p>
+        </div>
+    );
+  }
+
 
   return (
     <Card className="w-full max-w-md shadow-2xl backdrop-blur-sm bg-card/80">
@@ -36,7 +64,7 @@ export function AuthForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button onClick={handleSignIn} className="w-full" size="lg">
+        <Button onClick={handleGoogleSignIn} className="w-full" size="lg">
           <GoogleIcon className="mr-2" />
           Iniciar sesión con Google
         </Button>
@@ -50,7 +78,7 @@ export function AuthForm() {
             </span>
           </div>
         </div>
-        <Button onClick={handleSignIn} variant="secondary" className="w-full" size="lg">
+        <Button onClick={handleAnonymousSignIn} variant="secondary" className="w-full" size="lg">
           Invitado
         </Button>
       </CardContent>

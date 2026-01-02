@@ -9,21 +9,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/firebase";
+import { createLobby } from "@/lib/actions";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
+
 
 export function LobbyForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const [accessCode, setAccessCode] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
-  const handleCreateGame = (e: React.FormEvent) => {
+  const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would create a game in Firestore and get an ID
-    const mockGameId = "mock-game-" + Math.random().toString(36).substring(2, 8);
-    router.push(`/play/${mockGameId}`);
+    if (!user) {
+        toast({ title: "Debes iniciar sesión", description: "Inicia sesión para crear una partida.", variant: "destructive" });
+        return;
+    }
+    setIsCreating(true);
+    try {
+        const newLobbyId = await createLobby(user.uid);
+        router.push(`/play/${newLobbyId}`);
+    } catch (error) {
+        console.error("Error creating lobby:", error);
+        toast({ title: "Error al crear la sala", description: "No se pudo crear la partida. Inténtalo de nuevo.", variant: "destructive" });
+        setIsCreating(false);
+    }
   };
 
-  const handleJoinGame = (e: React.FormEvent) => {
+  const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+        toast({ title: "Debes iniciar sesión", description: "Inicia sesión para unirte a una partida.", variant: "destructive" });
+        return;
+    }
     if (accessCode.trim().length === 0) {
       toast({
         title: "Código Inválido",
@@ -32,9 +55,34 @@ export function LobbyForm() {
       });
       return;
     }
-    // In a real app, this would find the game by code and navigate
-    router.push(`/play/${accessCode}`);
+
+    setIsJoining(true);
+    try {
+        const lobbiesRef = collection(firestore, 'gameLobbies');
+        const q = query(lobbiesRef, where("accessCode", "==", accessCode.trim()));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            toast({ title: "Sala no encontrada", description: "No se encontró ninguna partida con ese código.", variant: "destructive" });
+            setIsJoining(false);
+            return;
+        }
+
+        const lobbyDoc = querySnapshot.docs[0];
+        // In a real app, you would add the user to the player list here
+        // and then navigate. For now, we navigate directly.
+        router.push(`/play/${lobbyDoc.id}`);
+
+    } catch (error) {
+        console.error("Error joining lobby:", error);
+        toast({ title: "Error al unirse a la sala", description: "No se pudo encontrar la partida. Verifica el código.", variant: "destructive" });
+        setIsJoining(false);
+    }
   };
+  
+  if (isUserLoading) {
+      return <p>Cargando...</p>;
+  }
 
   return (
     <Card className="w-full max-w-md shadow-2xl backdrop-blur-sm bg-card/80">
@@ -47,8 +95,8 @@ export function LobbyForm() {
       <CardContent>
         <Tabs defaultValue="create" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="create">Crear Partida</TabsTrigger>
-            <TabsTrigger value="join">Unirse a Partida</TabsTrigger>
+            <TabsTrigger value="create" disabled={isCreating || isJoining}>Crear Partida</TabsTrigger>
+            <TabsTrigger value="join" disabled={isCreating || isJoining}>Unirse a Partida</TabsTrigger>
           </TabsList>
           <TabsContent value="create" className="pt-6">
             <form onSubmit={handleCreateGame} className="space-y-6">
@@ -57,8 +105,8 @@ export function LobbyForm() {
                   Crea una partida y comparte el código de acceso con tus amigos para que puedan unirse.
                 </p>
               </div>
-              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg">
-                Crear y Jugar
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" disabled={isCreating}>
+                {isCreating ? "Creando..." : "Crear y Jugar"}
               </Button>
             </form>
           </TabsContent>
@@ -69,15 +117,16 @@ export function LobbyForm() {
                 <Input
                   id="access-code"
                   name="access-code"
-                  placeholder="e.g. POCHA1"
+                  placeholder="CÓDIGO"
                   maxLength={6}
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                   className="text-center tracking-widest text-lg h-12"
+                  disabled={isJoining}
                 />
               </div>
-              <Button type="submit" className="w-full" size="lg">
-                Unirse a Partida
+              <Button type="submit" className="w-full" size="lg" disabled={isJoining}>
+                {isJoining ? "Uniéndose..." : "Unirse a Partida"}
               </Button>
             </form>
           </TabsContent>
