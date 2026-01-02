@@ -65,7 +65,8 @@ export async function joinLobby(
 
 /**
  * Creates a game document from a lobby and starts the game.
- * @param lobby - The GameLobby object.
+ * @param lobbyId - The ID of the lobby.
+ * @param playerIds - The array of player UIDs.
  * @returns The ID of the newly created game.
  */
 export async function createGameFromLobby(lobbyId: string, playerIds: string[]): Promise<string> {
@@ -74,16 +75,16 @@ export async function createGameFromLobby(lobbyId: string, playerIds: string[]):
 
   const newGame: Omit<Game, 'id'> = {
     lobbyId: lobbyId,
-    playerIds: playerIds,
+    playerIds: playerIds, // Ensure playerIds are copied to the game document
     status: 'BETTING', // First phase after lobby
     currentRound: 1,
     createdAt: serverTimestamp(),
-    // ... other initial game state properties
-  } as Omit<Game, 'id'>; // Casting to avoid type issues with missing properties
+    // ... other initial game state properties will be added later
+  } as Omit<Game, 'id'>;
 
   const gameDocRef = await addDoc(gameCollectionRef, newGame);
 
-  // Update lobby status to 'PLAYING'
+  // Update lobby status to 'PLAYING' and link the gameId
   const lobbyDocRef = doc(firestore, 'gameLobbies', lobbyId);
   await updateDoc(lobbyDocRef, { status: 'PLAYING', gameId: gameDocRef.id });
 
