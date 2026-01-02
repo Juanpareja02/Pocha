@@ -90,14 +90,16 @@ export async function createGameFromLobby(lobbyId: string, playerIds: string[]):
   const currentPlayerId = playerIds[(dealerIndex + 1) % numPlayers];
 
   // Fetch user data to create denormalized player objects
+  const lobbyDoc = await getDoc(doc(firestore, "gameLobbies", lobbyId));
+  const lobbyCreatorId = lobbyDoc.data()?.creatorId;
+
   const playerPromises = playerIds.map(async (pid) => {
     // In a real app, you'd fetch from a 'users' collection.
     // For now, we'll create placeholder data.
-    const isHost = (await getDoc(doc(firestore, "gameLobbies", lobbyId))).data()?.creatorId === pid;
     return {
       id: pid,
       name: `Jugador ${pid.substring(0, 4)}`, // Placeholder name
-      isHost: isHost,
+      isHost: pid === lobbyCreatorId,
       avatarUrl: `https://picsum.photos/seed/${pid}/150/150`,
       bet: undefined,
       tricksWon: 0,
