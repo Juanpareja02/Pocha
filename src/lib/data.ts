@@ -1,10 +1,11 @@
+
 import type { GameState, Suit, Rank } from "./types";
 
-const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
-const RANKS: Rank[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+const SUITS: Suit[] = ["oros", "copas", "espadas", "bastos"];
+const RANKS: Rank[] = ["1", "2", "3", "4", "5", "6", "7", "S", "C", "R"];
 
 const createDeck = () => {
-  const deck = [];
+  const deck: { suit: Suit; rank: Rank }[] = [];
   for (const suit of SUITS) {
     for (const rank of RANKS) {
       deck.push({ suit, rank });
@@ -18,9 +19,11 @@ const deck = createDeck();
 export const mockGameState: GameState = {
   gameId: "mock-game-id",
   accessCode: "POCHA1",
-  phase: "PLAYING",
+  phase: "BETTING",
   roundNumber: 3,
-  trumpSuit: "hearts",
+  maxRounds: 10,
+  trumpSuit: "oros",
+  dealerId: "player-4",
   players: [
     {
       id: "player-1",
@@ -30,9 +33,9 @@ export const mockGameState: GameState = {
       isAI: false,
       avatarUrl: "https://picsum.photos/seed/you/150/150",
       hand: deck.splice(0, 3),
-      bet: 1,
+      bet: undefined,
       tricksWon: 0,
-      score: 5,
+      score: 0,
     },
     {
       id: "player-2",
@@ -42,9 +45,9 @@ export const mockGameState: GameState = {
       isAI: false,
       avatarUrl: "https://picsum.photos/seed/ada/150/150",
       hand: deck.splice(0, 3),
-      bet: 0,
-      tricksWon: 1,
-      score: 11,
+      bet: undefined,
+      tricksWon: 0,
+      score: 0,
     },
     {
       id: "player-3",
@@ -54,9 +57,9 @@ export const mockGameState: GameState = {
       isAI: false,
       avatarUrl: "https://picsum.photos/seed/grace/150/150",
       hand: deck.splice(0, 3),
-      bet: 2,
-      tricksWon: 1,
-      score: -2,
+      bet: undefined,
+      tricksWon: 0,
+      score: 0,
     },
     {
       id: "player-4",
@@ -66,13 +69,11 @@ export const mockGameState: GameState = {
       isAI: false,
       avatarUrl: "https://picsum.photos/seed/alan/150/150",
       hand: deck.splice(0, 3),
-      bet: 0,
+      bet: undefined,
       tricksWon: 0,
-      score: 10,
+      score: 0,
     },
   ],
-  currentPlayerId: "player-1",
-  currentTrick: [
-    { playerId: "player-2", card: { suit: "clubs", rank: "K" } }
-  ],
+  currentPlayerId: "player-1", // Player to the right of dealer
+  currentTrick: [],
 };

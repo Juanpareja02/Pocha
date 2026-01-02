@@ -1,18 +1,6 @@
-export type Suit = "spades" | "hearts" | "clubs" | "diamonds";
-export type Rank =
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "7"
-  | "8"
-  | "9"
-  | "10"
-  | "J"
-  | "Q"
-  | "K"
-  | "A";
+
+export type Suit = "oros" | "copas" | "espadas" | "bastos";
+export type Rank = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "S" | "C" | "R";
 
 export interface Card {
   suit: Suit;
@@ -39,8 +27,10 @@ export interface GameState {
   accessCode: string;
   phase: GamePhase;
   players: Player[];
+  dealerId: string;
   currentPlayerId: string;
   currentTrick: { playerId: string; card: Card }[];
-  trumpSuit: Suit;
+  trumpSuit?: Suit; // Can be undefined in "ciegas" round
   roundNumber: number;
+  maxRounds: number;
 }

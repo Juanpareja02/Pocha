@@ -1,26 +1,28 @@
+
 "use client";
 
 import type { Card, Suit } from "@/lib/types";
 import { PlayingCard } from "./PlayingCard";
 import { Card as UICard, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Diamond, Heart, Spade, Club } from "@/components/icons";
+import { Oros, Copas, Espadas, Bastos } from "@/components/icons";
 
 const suitIcons = {
-  spades: Spade,
-  hearts: Heart,
-  clubs: Club,
-  diamonds: Diamond,
+  oros: Oros,
+  copas: Copas,
+  espadas: Espadas,
+  bastos: Bastos,
 };
 
 interface GameTableProps {
   trick: { playerId: string; card: Card }[];
-  trumpSuit: Suit;
+  trumpSuit?: Suit;
   roundNumber: number;
 }
 
 export function GameTable({ trick, trumpSuit, roundNumber }: GameTableProps) {
-  const TrumpIcon = suitIcons[trumpSuit];
-  const redSuits = ["hearts", "diamonds"];
+  const TrumpIcon = trumpSuit ? suitIcons[trumpSuit] : null;
+  const redSuits = ["copas"];
+  const goldSuits = ["oros"];
 
   return (
     <div className="flex flex-col items-center justify-center gap-4">
@@ -29,9 +31,15 @@ export function GameTable({ trick, trumpSuit, roundNumber }: GameTableProps) {
           <CardTitle className="text-xs text-muted-foreground text-center">TRIUNFO / RONDA</CardTitle>
         </CardHeader>
         <CardContent className="p-2 flex items-center justify-center gap-4">
-           <div className="flex items-center gap-1">
-             <TrumpIcon className={`w-6 h-6 ${redSuits.includes(trumpSuit) ? 'text-red-500' : 'text-foreground'}`} />
-             <span className="text-lg font-bold capitalize">{trumpSuit}</span>
+           <div className="flex items-center gap-1 min-w-[80px] justify-center">
+            {TrumpIcon && trumpSuit ? (
+              <>
+                <TrumpIcon className={`w-6 h-6 ${redSuits.includes(trumpSuit) ? 'text-red-500' : goldSuits.includes(trumpSuit) ? 'text-yellow-500' : 'text-foreground'}`} />
+                <span className="text-lg font-bold capitalize">{trumpSuit}</span>
+              </>
+            ) : (
+                <span className="text-sm font-semibold">Ciegas</span>
+            )}
            </div>
            <div className="w-px h-6 bg-border" />
            <div className="flex items-center gap-1">
