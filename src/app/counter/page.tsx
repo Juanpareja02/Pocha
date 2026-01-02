@@ -1,86 +1,207 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import type { Player, Variant, GameState, Bet, Trick } from '@/lib/counter-types';
+import { SetupScreen } from '@/components/counter/SetupScreen';
+import { GameHeader } from '@/components/counter/GameHeader';
+import { BettingPhase } from '@/components/counter/BettingPhase';
+import { ResultsPhase } from '@/components/counter/ResultsPhase';
+import { Scoreboard } from '@/components/counter/Scoreboard';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Minus, UserPlus, Trash2, Home, Users } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-
-interface Player {
-  id: number;
-  name: string;
-  score: number;
-}
+import { Play, Trophy, ChevronRight } from 'lucide-react';
 
 export default function CounterPage() {
-  const [players, setPlayers] = useState<Player[]>([
-    { id: 1, name: 'Jugador 1', score: 0 },
-    { id: 2, name: 'Jugador 2', score: 0 },
-  ]);
-  const router = useRouter();
+  const [gameState, setGameState] = useState<GameState>('setup');
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [variants, setVariants] = useState<Variant>({ doubleGold: false });
+  const [roundSequence, setRoundSequence] = useState<number[]>([]);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [dealerIndex, setDealerIndex] = useState(0);
+  const [isGoldRound, setIsGoldRound] = useState(false);
+  const [currentBets, setCurrentBets] = useState<Bet>({});
+  const [currentTricks, setCurrentTricks] = useState<Trick>({});
 
-  const addPlayer = () => {
-    setPlayers([...players, { id: Date.now(), name: `Jugador ${players.length + 1}`, score: 0 }]);
+  const initializeGame = (playerNames: string[], numPlayers: number) => {
+    const newPlayers: Player[] = Array.from({ length: numPlayers }, (_, index) => ({
+      id: index,
+      name: playerNames[index]?.trim() || `Jugador ${index + 1}`,
+      score: 0,
+      history: [],
+    }));
+
+    const maxCards = Math.floor(40 / newPlayers.length);
+    const sequence: number[] = [];
+    for (let i = 1; i <= maxCards; i++) sequence.push(i);
+    for (let i = maxCards - 1; i >= 1; i--) sequence.push(i);
+
+    setPlayers(newPlayers);
+    setRoundSequence(sequence);
+    setCurrentRound(0);
+    setDealerIndex(Math.floor(Math.random() * newPlayers.length));
+    setGameState('betting');
+    setCurrentBets({});
+    setCurrentTricks({});
   };
 
-  const removePlayer = (id: number) => {
-    setPlayers(players.filter(p => p.id !== id));
+  const calculateScores = () => {
+    const updatedPlayers = players.map(player => {
+      const bet = currentBets[player.id] ?? 0;
+      const tricks = currentTricks[player.id] ?? 0;
+      const diff = Math.abs(bet - tricks);
+      let roundPoints = 0;
+
+      if (diff === 0) {
+        roundPoints = 10 + 5 * tricks;
+      } else {
+        roundPoints = -(5 * diff);
+      }
+
+      if (variants.doubleGold && isGoldRound) {
+        roundPoints *= 2;
+      }
+
+      return {
+        ...player,
+        score: player.score + roundPoints,
+        history: [...player.history, roundPoints],
+      };
+    });
+
+    setPlayers(updatedPlayers);
+    setGameState('scoreboard');
   };
 
-  const updateScore = (id: number, delta: number) => {
-    setPlayers(players.map(p => (p.id === id ? { ...p, score: p.score + delta } : p)));
+  const handleNextPhase = () => {
+    if (gameState === 'betting') {
+      if (Object.keys(currentBets).length !== players.length) return;
+      // Initialize tricks for all players
+      const initialTricks: Trick = {};
+      players.forEach(p => {
+        initialTricks[p.id] = 0;
+      });
+      setCurrentTricks(initialTricks);
+      setGameState('results');
+    } else if (gameState === 'results') {
+      const totalTricks = Object.values(currentTricks).reduce((a, b) => a + b, 0);
+      if (totalTricks !== roundSequence[currentRound]) {
+        alert(`¡Error! Las bazas ganadas (${totalTricks}) no coinciden con las cartas repartidas (${roundSequence[currentRound]}).`);
+        return;
+      }
+      calculateScores();
+    } else if (gameState === 'scoreboard') {
+      const nextRound = currentRound + 1;
+      if (nextRound >= roundSequence.length) {
+        setGameState('gameover');
+      } else {
+        setCurrentRound(nextRound);
+        setDealerIndex((dealerIndex + 1) % players.length);
+        setCurrentBets({});
+        setCurrentTricks({});
+        setIsGoldRound(false);
+        setGameState('betting');
+      }
+    }
   };
 
-  const updateName = (id: number, name: string) => {
-    setPlayers(players.map(p => (p.id === id ? { ...p, name } : p)));
+  const isButtonDisabled = () => {
+    if (gameState === 'betting') {
+      return Object.keys(currentBets).length !== players.length;
+    }
+    if (gameState === 'results') {
+      const totalTricks = Object.values(currentTricks).reduce((a, b) => a + b, 0);
+      return totalTricks !== roundSequence[currentRound];
+    }
+    return false;
+  };
+  
+  const restartGame = () => {
+    setGameState('setup');
+    setPlayers([]);
+    setVariants({ doubleGold: false });
+    setRoundSequence([]);
+    setCurrentRound(0);
+    setDealerIndex(0);
+    setIsGoldRound(false);
+    setCurrentBets({});
+    setCurrentTricks({});
+  };
+
+
+  if (gameState === 'setup') {
+    return <SetupScreen onInitialize={initializeGame} variants={variants} setVariants={setVariants} />;
+  }
+
+  const renderContent = () => {
+    switch (gameState) {
+      case 'betting':
+        return (
+          <BettingPhase
+            players={players}
+            dealerIndex={dealerIndex}
+            cardsInRound={roundSequence[currentRound]}
+            currentBets={currentBets}
+            setCurrentBets={setCurrentBets}
+          />
+        );
+      case 'results':
+        return (
+          <ResultsPhase
+            players={players}
+            cardsInRound={roundSequence[currentRound]}
+            currentBets={currentBets}
+            currentTricks={currentTricks}
+            setCurrentTricks={setCurrentTricks}
+          />
+        );
+      case 'scoreboard':
+        return <Scoreboard players={players} roundSequence={roundSequence} currentRound={currentRound} />;
+      case 'gameover':
+        return (
+          <div className="p-4 md:p-10 text-center max-w-md mx-auto">
+            <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold mb-2">¡Partida Finalizada!</h1>
+            <p className="text-muted-foreground mb-8">Gracias por jugar.</p>
+            <Scoreboard players={players} roundSequence={roundSequence} currentRound={currentRound} />
+            <Button onClick={restartGame} className="mt-8 w-full" size="lg">
+              Nueva Partida
+            </Button>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-background">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
-      <main className="relative z-10 flex flex-col items-center p-4">
-        <div className="w-full max-w-4xl">
-           <div className="flex justify-between items-center mb-6">
-             <Button variant="outline" size="icon" onClick={() => router.push('/mode-select')}>
-                <Home className="w-4 h-4" />
-            </Button>
-            <h1 className="text-3xl font-bold font-headline flex items-center gap-2"><Users /> Contador de Pocha</h1>
-            <Button variant="outline" onClick={addPlayer} size="icon">
-              <UserPlus className="w-4 h-4" />
-              <span className="sr-only">Añadir Jugador</span>
-            </Button>
-          </div>
+    <div className="relative min-h-screen w-full bg-background font-sans text-foreground pb-32 md:pb-24">
+      <GameHeader
+        currentRound={currentRound}
+        roundSequence={roundSequence}
+        isGoldRound={isGoldRound}
+        setIsGoldRound={setIsGoldRound}
+        variants={variants}
+        players={players}
+        dealerIndex={dealerIndex}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {players.map(player => (
-              <Card key={player.id} className="shadow-lg bg-card/80 backdrop-blur-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Input
-                    className="text-lg font-bold border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
-                    value={player.name}
-                    onChange={(e) => updateName(player.id, e.target.value)}
-                  />
-                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removePlayer(player.id)}>
-                      <Trash2 className="h-4 w-4" />
-                   </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-5xl font-bold text-center py-4">{player.score}</div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Button variant="outline" size="icon" onClick={() => updateScore(player.id, -1)}>
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => updateScore(player.id, 1)}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      <main className="relative z-10">{renderContent()}</main>
+
+      {gameState !== 'gameover' && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-sm border-t z-20">
+          <div className="max-w-md mx-auto">
+            <Button
+              onClick={handleNextPhase}
+              disabled={isButtonDisabled()}
+              className="w-full"
+              size="lg"
+            >
+              {gameState === 'betting' && <>Ver Resultados <ChevronRight /></>}
+              {gameState === 'results' && <>Calcular Puntos <Trophy /></>}
+              {gameState === 'scoreboard' && <>Siguiente Ronda <Play /></>}
+            </Button>
           </div>
         </div>
-      </main>
+      )}
     </div>
   );
 }

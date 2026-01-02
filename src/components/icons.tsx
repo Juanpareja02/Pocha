@@ -1,4 +1,3 @@
-
 import type { SVGProps } from "react";
 
 export const Logo = (props: SVGProps<SVGSVGElement>) => (
@@ -42,4 +41,28 @@ export const Bastos = (props: SVGProps<SVGSVGElement>) => (
     <svg viewBox="0 0 512 512" fill="currentColor" {...props}>
         <path d="M384 336c52.8 0 96-43.2 96-96s-43.2-96-96-96-96 43.2-96 96 43.2 96 96 96zM128 336c52.8 0 96-43.2 96-96s-43.2-96-96-96-96 43.2-96 96 43.2 96 96 96zM256 224c52.8 0 96-43.2 96-96s-43.2-96-96-96-96 43.2-96 96 43.2 96 96 96zM280 352h-48c-8.8 0-16 7.2-16 16v128h80V368c0-8.8-7.2-16-16-16z" />
     </svg>
+);
+
+export const PochaIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M12 2a10 10 0 0 0-10 10c0 2.58 1.49 4.82 3.75 6.02" />
+    <path d="M12 22a10 10 0 0 1-9.95-9" />
+    <path d="M14.2 2.2a10 10 0 0 1 7.8 7.8" />
+    <path d="M22 12a10 10 0 0 0-10 10" />
+    <path d="M2.05 13A10 10 0 0 1 12 2" />
+    <path d="M9.8 21.8a10 10 0 0 0-7.8-7.8" />
+    <path d="M12 2v20" />
+    <path d="M2 12h20" />
+  </svg>
 );
