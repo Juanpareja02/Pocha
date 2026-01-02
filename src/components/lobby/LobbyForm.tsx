@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, errorEmitter } from "@/firebase";
-import { createLobby } from "@/lib/actions";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { createLobby, joinLobby } from "@/lib/actions";
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { FirestorePermissionError } from "@/firebase/errors";
 
 
@@ -33,7 +33,6 @@ export function LobbyForm() {
     setIsCreating(true);
     try {
         const newLobbyId = await createLobby(user.uid);
-        // Navigate to the play page, which will act as the lobby view
         router.push(`/play/${newLobbyId}`);
     } catch (error) {
         console.error("Error creating lobby:", error);
@@ -60,34 +59,32 @@ export function LobbyForm() {
     setIsJoining(true);
     
     const lobbiesRef = collection(firestore, 'gameLobbies');
-    const q = query(lobbiesRef, where("accessCode", "==", accessCode.trim()));
+    const q = query(lobbiesRef, where("accessCode", "==", accessCode.trim().toUpperCase()));
 
-    getDocs(q)
-        .then((querySnapshot) => {
-            if (querySnapshot.empty) {
-                toast({ title: "Sala no encontrada", description: "No se encontró ninguna partida con ese código.", variant: "destructive" });
-                setIsJoining(false);
-                return;
-            }
-
-            const lobbyDoc = querySnapshot.docs[0];
-            // In a real app, you would add the user to the player list here
-            // and then navigate. For now, we navigate directly.
-            router.push(`/play/${lobbyDoc.id}`);
-        })
-        .catch((serverError) => {
-            console.error("Error joining lobby:", serverError);
-            
-            const contextualError = new FirestorePermissionError({
-                path: 'gameLobbies',
-                operation: 'list', // getDocs is a 'list' operation
-            });
-            errorEmitter.emit('permission-error', contextualError);
-
-            // Also show a toast to the user. The detailed error will be in the dev console.
-            toast({ title: "Error al unirse a la sala", description: "No se pudo encontrar la partida. Verifica el código y los permisos.", variant: "destructive" });
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            toast({ title: "Sala no encontrada", description: "No se encontró ninguna partida con ese código.", variant: "destructive" });
             setIsJoining(false);
+            return;
+        }
+
+        const lobbyDoc = querySnapshot.docs[0];
+        await joinLobby(lobbyDoc.id, user.uid);
+        router.push(`/play/${lobbyDoc.id}`);
+
+    } catch (serverError) {
+        console.error("Error joining lobby:", serverError);
+        
+        const contextualError = new FirestorePermissionError({
+            path: 'gameLobbies',
+            operation: 'list', // getDocs is a 'list' operation
         });
+        errorEmitter.emit('permission-error', contextualError);
+
+        toast({ title: "Error al unirse a la sala", description: "No se pudo encontrar la partida. Verifica el código y los permisos.", variant: "destructive" });
+        setIsJoining(false);
+    }
   };
   
   if (isUserLoading) {

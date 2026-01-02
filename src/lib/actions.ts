@@ -7,10 +7,12 @@ import {
   serverTimestamp,
   updateDoc,
   getFirestore,
+  arrayUnion,
+  getDoc,
 } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
-import type { Game, GameLobby } from '@/lib/types';
+import type { Game, Player, Suit, Rank } from '@/lib/types';
 
 // Helper to get Firestore instance on the server
 function getFirestoreInstance() {
@@ -30,7 +32,6 @@ export async function createLobby(creatorId: string): Promise<string> {
   const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   const lobbyCollectionRef = collection(firestore, 'gameLobbies');
 
-  // Firestore requires a plain object, not a class instance with methods.
   const newLobbyData = {
     accessCode,
     creatorId,
@@ -52,15 +53,14 @@ export async function createLobby(creatorId: string): Promise<string> {
 export async function joinLobby(
   lobbyId: string,
   playerId: string,
-  existingPlayerIds: string[]
 ) {
-  if (existingPlayerIds.includes(playerId)) return; // Already in lobby
-
   const firestore = getFirestoreInstance();
   const lobbyDocRef = doc(firestore, 'gameLobbies', lobbyId);
-  const updatedPlayerIds = [...existingPlayerIds, playerId];
 
-  await updateDoc(lobbyDocRef, { playerIds: updatedPlayerIds });
+  // Use arrayUnion to safely add the player if they aren't already in the list
+  await updateDoc(lobbyDocRef, {
+    playerIds: arrayUnion(playerId)
+  });
 }
 
 /**
@@ -73,14 +73,56 @@ export async function createGameFromLobby(lobbyId: string, playerIds: string[]):
   const firestore = getFirestoreInstance();
   const gameCollectionRef = collection(firestore, 'games');
 
+  // --- START: Game Initialization Logic ---
+  const numPlayers = playerIds.length;
+  const cardSetup: { [key: number]: number } = {
+    3: 24, 4: 32, 5: 40, 6: 36,
+  };
+  const totalCards = cardSetup[numPlayers] || 40;
+  const maxCards = Math.floor(totalCards / numPlayers);
+  
+  const roundSequence: number[] = [];
+  for (let i = 1; i <= maxCards; i++) roundSequence.push(i);
+  for (let i = maxCards - 1; i >= 1; i--) roundSequence.push(i);
+
+  const dealerIndex = Math.floor(Math.random() * numPlayers);
+  const dealerId = playerIds[dealerIndex];
+  const currentPlayerId = playerIds[(dealerIndex + 1) % numPlayers];
+
+  // Fetch user data to create denormalized player objects
+  const playerPromises = playerIds.map(async (pid) => {
+    // In a real app, you'd fetch from a 'users' collection.
+    // For now, we'll create placeholder data.
+    const isHost = (await getDoc(doc(firestore, "gameLobbies", lobbyId))).data()?.creatorId === pid;
+    return {
+      id: pid,
+      name: `Jugador ${pid.substring(0, 4)}`, // Placeholder name
+      isHost: isHost,
+      avatarUrl: `https://picsum.photos/seed/${pid}/150/150`,
+      bet: undefined,
+      tricksWon: 0,
+      hand: [], // Hand will be dealt in a subsequent step/function
+      score: 0,
+    };
+  });
+  
+  const players: Player[] = await Promise.all(playerPromises);
+
+  // --- END: Game Initialization Logic ---
+
   const newGame: Omit<Game, 'id'> = {
     lobbyId: lobbyId,
-    playerIds: playerIds, // Ensure playerIds are copied to the game document
-    status: 'BETTING', // First phase after lobby
-    currentRound: 1,
+    playerIds: playerIds,
+    players: players,
+    status: 'BETTING',
+    dealerId: dealerId,
+    currentPlayerId: currentPlayerId,
+    currentTrick: [],
+    trumpSuit: undefined, // No trump suit until cards are dealt
+    currentRound: 0, // 0-indexed
+    roundSequence: roundSequence,
     createdAt: serverTimestamp(),
-    // ... other initial game state properties will be added later
-  } as Omit<Game, 'id'>;
+  };
 
   const gameDocRef = await addDoc(gameCollectionRef, newGame);
 

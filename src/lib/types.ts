@@ -11,9 +11,8 @@ export interface Card {
 export interface Player {
   id: string; // Corresponds to User UID
   name: string;
-  isYou?: boolean;
+  isYou?: boolean; // This should be a client-side only property
   isHost: boolean;
-  isAI: boolean;
   avatarUrl: string;
   bet?: number;
   tricksWon: number;
@@ -58,13 +57,14 @@ export interface Game {
   id: string;
   lobbyId: string;
   playerIds: string[];
-  players?: Player[]; // Denormalized player data for the game
+  players: Player[]; // Denormalized player data for the game
   status: GamePhase;
-  dealerId?: string;
-  currentPlayerId?: string;
-  currentTrick?: { playerId: string; card: Card }[];
+  dealerId: string;
+
+  currentPlayerId: string;
+  currentTrick: { playerId: string; card: Card }[];
   trumpSuit?: Suit;
   currentRound: number;
-  roundSequence?: number[];
+  roundSequence: number[];
   createdAt: FieldValue;
 }
