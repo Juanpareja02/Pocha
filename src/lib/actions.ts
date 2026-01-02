@@ -6,15 +6,18 @@ import {
   doc,
   serverTimestamp,
   updateDoc,
+  getFirestore,
 } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
 import type { Game, GameLobby } from '@/lib/types';
 
 // Helper to get Firestore instance on the server
 function getFirestoreInstance() {
-  // We call initializeFirebase() here to get the server-side instance of Firestore.
-  const { firestore } = initializeFirebase();
-  return firestore;
+  if (!getApps().length) {
+    initializeApp(firebaseConfig);
+  }
+  return getFirestore(getApp());
 }
 
 /**
