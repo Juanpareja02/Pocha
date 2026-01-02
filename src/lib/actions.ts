@@ -1,3 +1,4 @@
+
 'use server';
 
 import {
@@ -9,6 +10,9 @@ import {
   getFirestore,
   arrayUnion,
   getDoc,
+  getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
@@ -90,26 +94,26 @@ export async function createGameFromLobby(lobbyId: string, playerIds: string[]):
   const currentPlayerId = playerIds[(dealerIndex + 1) % numPlayers];
 
   // Fetch user data to create denormalized player objects
+  const usersRef = collection(firestore, "users");
+  const usersQuery = query(usersRef, where("id", "in", playerIds));
+  const userDocs = await getDocs(usersQuery);
+  const usersData: { [key: string]: any } = {};
+  userDocs.forEach(d => usersData[d.id] = d.data());
+  
   const lobbyDoc = await getDoc(doc(firestore, "gameLobbies", lobbyId));
   const lobbyCreatorId = lobbyDoc.data()?.creatorId;
 
-  const playerPromises = playerIds.map(async (pid) => {
-    // In a real app, you'd fetch from a 'users' collection.
-    // For now, we'll create placeholder data.
-    return {
+  const players: Player[] = playerIds.map((pid) => ({
       id: pid,
-      name: `Jugador ${pid.substring(0, 4)}`, // Placeholder name
+      name: usersData[pid]?.username || `Jugador ${pid.substring(0, 4)}`,
       isHost: pid === lobbyCreatorId,
-      avatarUrl: `https://picsum.photos/seed/${pid}/150/150`,
+      avatarUrl: usersData[pid]?.avatarUrl || `https://picsum.photos/seed/${pid}/150/150`,
       bet: undefined,
       tricksWon: 0,
       hand: [], // Hand will be dealt in a subsequent step/function
       score: 0,
-    };
-  });
+    }));
   
-  const players: Player[] = await Promise.all(playerPromises);
-
   // --- END: Game Initialization Logic ---
 
   const newGame: Omit<Game, 'id'> = {

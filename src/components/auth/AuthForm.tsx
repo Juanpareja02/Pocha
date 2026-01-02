@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,14 +9,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Logo } from "@/components/icons";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import { initiateAnonymousSignIn, initiateEmailSignUp, initiateEmailSignIn } from "@/firebase/non-blocking-login";
 import { useToast } from "@/hooks/use-toast";
-import { AuthError, getAuth, onAuthStateChanged } from "firebase/auth";
+import { AuthError, User, onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+
+async function createUserProfile(db: any, user: User) {
+    if (!db || !user) return;
+    const userRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+        const username = user.email ? user.email.split('@')[0] : `Invitado_${user.uid.substring(0, 6)}`;
+        await setDoc(userRef, {
+            id: user.uid,
+            username: user.displayName || username,
+            email: user.email || '',
+            avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/150/150`,
+            createdAt: serverTimestamp(),
+        });
+    }
+}
+
 
 export function AuthForm() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
@@ -24,11 +45,12 @@ export function AuthForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!auth) return;
+    if (!auth || !firestore) return;
 
-    const unsubscribe = onAuthStateChanged(auth, (user, error) => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser, error) => {
         setIsSubmitting(false);
-        if (user) {
+        if (fbUser) {
+            await createUserProfile(firestore, fbUser);
             router.push("/mode-select");
         } else if (error) {
              const authError = error as AuthError;
@@ -62,7 +84,7 @@ export function AuthForm() {
     });
 
     return () => unsubscribe();
-  }, [auth, router, toast]);
+  }, [auth, firestore, router, toast]);
 
   if (isUserLoading || user) {
     return (
