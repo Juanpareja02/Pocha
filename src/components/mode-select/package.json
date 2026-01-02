@@ -1,0 +1,5 @@
+
+{
+  "name": "@components/mode-select",
+  "main": "./ModeSelectClientPage.tsx"
+}
