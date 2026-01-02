@@ -19,20 +19,20 @@ const CardSchema = z.object({
 export type Card = z.infer<typeof CardSchema>;
 
 const AiOpponentPlaysCardInputSchema = z.object({
-  hand: z.array(CardSchema).describe('The cards currently in the AI opponent hand.'),
-  playedCards: z.array(CardSchema).describe('The cards that have already been played in the current trick.'),
-  trumpSuit: z.string().describe('The trump suit for the current round.'),
-  leadingSuit: z.string().optional().describe('The suit of the first card played in the current trick, if any.'),
-  currentScore: z.number().describe('Current score of the AI opponent'),
-  predictedTricks: z.number().describe('The number of tricks the AI opponent predicted it would win'),
-  roundNumber: z.number().describe('The current round number'),
+  hand: z.array(CardSchema).describe('Las cartas actualmente en la mano del oponente de la IA.'),
+  playedCards: z.array(CardSchema).describe('Las cartas que ya se han jugado en la baza actual.'),
+  trumpSuit: z.string().describe('El palo de triunfo para la ronda actual.'),
+  leadingSuit: z.string().optional().describe('El palo de la primera carta jugada en la baza actual, si la hay.'),
+  currentScore: z.number().describe('Puntuación actual del oponente de la IA.'),
+  predictedTricks: z.number().describe('El número de bazas que el oponente de la IA predijo que ganaría.'),
+  roundNumber: z.number().describe('El número de la ronda actual.'),
 });
 
 export type AiOpponentPlaysCardInput = z.infer<typeof AiOpponentPlaysCardInputSchema>;
 
 const AiOpponentPlaysCardOutputSchema = z.object({
-  cardToPlay: CardSchema.describe('The card the AI opponent has decided to play.'),
-  reasoning: z.string().describe('The AI reasoning for choosing the card.')
+  cardToPlay: CardSchema.describe('La carta que el oponente de la IA ha decidido jugar.'),
+  reasoning: z.string().describe('El razonamiento de la IA para elegir la carta.')
 });
 
 export type AiOpponentPlaysCardOutput = z.infer<typeof AiOpponentPlaysCardOutputSchema>;
@@ -46,23 +46,23 @@ const prompt = ai.definePrompt({
   name: 'aiOpponentPlaysCardPrompt',
   input: {schema: AiOpponentPlaysCardInputSchema},
   output: {schema: AiOpponentPlaysCardOutputSchema},
-  prompt: `You are an AI opponent in a card game called La Pocha. Your goal is to play your cards strategically to win the number of tricks you predicted at the start of the round.
+  prompt: `Eres un oponente de IA en un juego de cartas llamado La Pocha. Tu objetivo es jugar tus cartas estratégicamente para ganar el número de bazas que predijiste al comienzo de la ronda.
 
-You are playing a card in the current trick.  Here's the current situation:
+Estás jugando una carta en la baza actual. Aquí está la situación actual:
 
-Your hand: {{#each hand}}{{{suit}}} {{{rank}}}{{#unless @last}}, {{/unless}}{{/each}}
-Played cards in this trick: {{#each playedCards}}{{{suit}}} {{{rank}}}{{#unless @last}}, {{/unless}}{{/each}}
-Trump suit: {{{trumpSuit}}}
-Leading suit (if any): {{{leadingSuit}}}
-Your current score: {{{currentScore}}}
-Number of tricks you predicted you would win: {{{predictedTricks}}}
-Current round number: {{{roundNumber}}}
+Tu mano: {{#each hand}}{{{suit}}} {{{rank}}}{{#unless @last}}, {{/unless}}{{/each}}
+Cartas jugadas en esta baza: {{#each playedCards}}{{{suit}}} {{{rank}}}{{#unless @last}}, {{/unless}}{{/each}}
+Palo de triunfo: {{{trumpSuit}}}
+Palo de salida (si lo hay): {{{leadingSuit}}}
+Tu puntuación actual: {{{currentScore}}}
+Número de bazas que predijiste que ganarías: {{{predictedTricks}}}
+Número de ronda actual: {{{roundNumber}}}
 
-Based on this information, choose one card from your hand to play. Explain your reasoning for choosing this card, considering the game rules, the current trick, and your overall strategy to achieve your predicted number of tricks.
+Basado en esta información, elige una carta de tu mano para jugar. Explica tu razonamiento para elegir esta carta, considerando las reglas del juego, la baza actual y tu estrategia general para lograr el número de bazas predicho.
 
-Ensure that if you can follow the leading suit you MUST do so, but beyond that make the best decision you can.
+Asegúrate de que si puedes seguir el palo de salida DEBES hacerlo, pero más allá de eso, toma la mejor decisión que puedas.
 
-Output the card you choose and your reasoning, following the schema.
+Devuelve la carta que elijas y tu razonamiento, siguiendo el esquema.
 `,
 });
 

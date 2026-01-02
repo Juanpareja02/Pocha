@@ -24,7 +24,7 @@ export const mockGameState: GameState = {
   players: [
     {
       id: "player-1",
-      name: "You",
+      name: "Tú",
       isYou: true,
       isHost: true,
       isAI: false,

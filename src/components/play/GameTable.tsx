@@ -26,7 +26,7 @@ export function GameTable({ trick, trumpSuit, roundNumber }: GameTableProps) {
     <div className="flex flex-col items-center justify-center gap-4">
       <UICard className="bg-background/70 backdrop-blur-sm">
         <CardHeader className="p-2 pb-0">
-          <CardTitle className="text-xs text-muted-foreground text-center">TRUMP / ROUND</CardTitle>
+          <CardTitle className="text-xs text-muted-foreground text-center">TRIUNFO / RONDA</CardTitle>
         </CardHeader>
         <CardContent className="p-2 flex items-center justify-center gap-4">
            <div className="flex items-center gap-1">
@@ -42,7 +42,7 @@ export function GameTable({ trick, trumpSuit, roundNumber }: GameTableProps) {
 
       <div className="relative h-40 w-64 flex items-center justify-center">
         {trick.length === 0 ? (
-          <p className="text-muted-foreground">Waiting for first card...</p>
+          <p className="text-muted-foreground">Esperando la primera carta...</p>
         ) : (
           trick.map(({ card }, index) => (
             <div key={index} className="absolute" style={{ transform: `translateX(${(index - (trick.length -1) / 2) * 30}px)` }}>

@@ -88,7 +88,7 @@ export function GameBoard({ initialState }: { initialState: GameState }) {
              <AvatarFallback>{you?.name.substring(0, 2)}</AvatarFallback>
            </Avatar>
            <p className="font-semibold text-sm">{you?.name}</p>
-           <Badge>Score: {you?.score}</Badge>
+           <Badge>Puntos: {you?.score}</Badge>
         </div>
       </div>
     );
@@ -141,14 +141,14 @@ export function GameBoard({ initialState }: { initialState: GameState }) {
             </SheetTrigger>
             <SheetContent>
                 <SheetHeader>
-                    <SheetTitle>Game Info</SheetTitle>
+                    <SheetTitle>Info de la Partida</SheetTitle>
                 </SheetHeader>
                 <div className="mt-4 space-y-4">
-                    <p><strong>Game ID:</strong> {gameState.accessCode}</p>
-                    <p><strong>Round:</strong> {gameState.roundNumber}</p>
-                    <p><strong>Phase:</strong> {gameState.phase}</p>
-                    <p><strong>Trump:</strong> <span className="capitalize">{gameState.trumpSuit}</span></p>
-                    <p><strong>Turn:</strong> {gameState.players.find(p => p.id === gameState.currentPlayerId)?.name}</p>
+                    <p><strong>ID Partida:</strong> {gameState.accessCode}</p>
+                    <p><strong>Ronda:</strong> {gameState.roundNumber}</p>
+                    <p><strong>Fase:</strong> {gameState.phase}</p>
+                    <p><strong>Triunfo:</strong> <span className="capitalize">{gameState.trumpSuit}</span></p>
+                    <p><strong>Turno:</strong> {gameState.players.find(p => p.id === gameState.currentPlayerId)?.name}</p>
                 </div>
             </SheetContent>
         </Sheet>

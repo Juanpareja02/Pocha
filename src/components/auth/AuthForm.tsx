@@ -32,13 +32,13 @@ export function AuthForm() {
           </CardTitle>
         </div>
         <CardDescription>
-          The classic trick-taking card game. Sign in to play.
+          El clásico juego de cartas de bazas. Inicia sesión para jugar.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Button onClick={handleSignIn} className="w-full" size="lg">
           <GoogleIcon className="mr-2" />
-          Sign in with Google
+          Iniciar sesión con Google
         </Button>
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -46,17 +46,17 @@ export function AuthForm() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-card px-2 text-muted-foreground">
-              Or continue as
+              O continuar como
             </span>
           </div>
         </div>
         <Button onClick={handleSignIn} variant="secondary" className="w-full" size="lg">
-          Guest
+          Invitado
         </Button>
       </CardContent>
       <CardFooter>
         <p className="text-xs text-muted-foreground text-center w-full">
-          By signing in, you agree to our terms of service (that we haven&apos;t written yet).
+          Al iniciar sesión, aceptas nuestros términos de servicio (que aún no hemos escrito).
         </p>
       </CardFooter>
     </Card>

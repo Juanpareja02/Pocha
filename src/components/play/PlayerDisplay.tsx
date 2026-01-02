@@ -52,20 +52,20 @@ export function PlayerDisplay({ player, isCurrentPlayer, phase, position }: Play
 
       <div className="flex gap-2 text-xs">
         <Badge variant={isCurrentPlayer ? "default" : "secondary"}>
-          Score: {player.score}
+          Puntos: {player.score}
         </Badge>
       </div>
 
       <div className="flex gap-2 text-xs items-center h-5">
         {phase === "BETTING" && isCurrentPlayer && <Hourglass className="w-4 h-4 animate-spin" />}
-        {phase === "BETTING" && player.bet === undefined && !isCurrentPlayer && <span className="text-muted-foreground">Betting...</span>}
+        {phase === "BETTING" && player.bet === undefined && !isCurrentPlayer && <span className="text-muted-foreground">Apostando...</span>}
         {player.bet !== undefined && (
           <>
             <Badge variant="outline" className="gap-1">
-                <Target className="w-3 h-3" /> Bet: {player.bet}
+                <Target className="w-3 h-3" /> Apostó: {player.bet}
             </Badge>
             <Badge variant="outline" className="gap-1">
-                <Trophy className="w-3 h-3" /> Won: {player.tricksWon}
+                <Trophy className="w-3 h-3" /> Ganó: {player.tricksWon}
             </Badge>
           </>
         )}
