@@ -4,7 +4,7 @@ import type { Player, GamePhase } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Bot, Crown, CheckCircle, Hourglass, Target, Trophy } from "lucide-react";
+import { Crown, Hourglass, Target, Trophy } from "lucide-react";
 import { PlayingCard } from "./PlayingCard";
 
 interface PlayerDisplayProps {
@@ -45,7 +45,6 @@ export function PlayerDisplay({ player, isCurrentPlayer, phase, position }: Play
           <AvatarFallback>{player.name.substring(0, 2)}</AvatarFallback>
         </Avatar>
         {player.isHost && <Crown className="absolute -top-1 -right-1 w-5 h-5 text-yellow-400 bg-primary rounded-full p-0.5" />}
-        {player.isAI && <Bot className="absolute bottom-0 -right-1 w-5 h-5 text-cyan-300 bg-secondary rounded-full p-0.5" />}
       </div>
       
       <p className="font-semibold text-sm text-center truncate w-32">{player.name}</p>

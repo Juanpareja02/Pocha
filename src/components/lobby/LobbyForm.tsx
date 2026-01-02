@@ -7,8 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Users } from "lucide-react";
+import { Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function LobbyForm() {
@@ -53,22 +52,10 @@ export function LobbyForm() {
           </TabsList>
           <TabsContent value="create" className="pt-6">
             <form onSubmit={handleCreateGame} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="ai-players" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Oponentes de IA
-                </Label>
-                <Select defaultValue="3">
-                  <SelectTrigger id="ai-players" className="w-full">
-                    <SelectValue placeholder="Selecciona el número de oponentes de IA" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1 Jugador IA</SelectItem>
-                    <SelectItem value="2">2 Jugadores IA</SelectItem>
-                    <SelectItem value="3">3 Jugadores IA</SelectItem>
-                  </SelectContent>
-                </Select>
-                 <p className="text-xs text-muted-foreground">Jugarás con hasta 3 oponentes de IA.</p>
+               <div>
+                <p className="text-sm text-muted-foreground text-center">
+                  Crea una partida y comparte el código de acceso con tus amigos para que puedan unirse.
+                </p>
               </div>
               <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg">
                 Crear y Jugar
