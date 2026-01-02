@@ -47,8 +47,8 @@ service cloud.firestore {
                     && request.resource.data.creatorId == request.auth.uid
                     && request.auth.uid in request.resource.data.playerIds;
       allow read: if isPlayer(resource);
-      // Allow updates from players (to join), the creator (to change status), or the server (to start the game).
-      allow update: if isPlayer(resource) || isCreator(resource) || request.auth == null;
+      // Allow updates to join, for the creator to change status, or for the server to start game.
+      allow update: if isSignedIn() || request.auth == null;
       allow delete: if isCreator(resource);
       allow list: if isSignedIn(); // Allow signed-in users to query/list to find a lobby by code.
     }
