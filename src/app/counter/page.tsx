@@ -29,7 +29,15 @@ export default function CounterPage() {
       history: [],
     }));
 
-    const maxCards = Math.floor(40 / newPlayers.length);
+    const cardSetup: { [key: number]: number } = {
+        3: 24, // 8 cards max
+        4: 32, // 8 cards max
+        5: 40, // 8 cards max
+        6: 36, // 6 cards max
+    };
+
+    const totalCards = cardSetup[numPlayers] || 40;
+    const maxCards = Math.floor(totalCards / newPlayers.length);
     const sequence: number[] = [];
     for (let i = 1; i <= maxCards; i++) sequence.push(i);
     for (let i = maxCards - 1; i >= 1; i--) sequence.push(i);
