@@ -19,7 +19,7 @@ export function AuthForm() {
 
   const handleSignIn = () => {
     // Placeholder for authentication logic
-    router.push("/lobby");
+    router.push("/mode-select");
   };
 
   return (
