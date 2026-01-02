@@ -2,42 +2,52 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
+  let firebaseApp;
   if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
-    let firebaseApp;
+    // Attempt to initialize via Firebase App Hosting environment variables
     try {
-      // Attempt to initialize via Firebase App Hosting environment variables
       firebaseApp = initializeApp();
     } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
+      if (process.env.NODE_ENV === 'production') {
+        console.warn(
+          'Automatic initialization failed. Falling back to firebase config object.',
+          e
+        );
       }
       firebaseApp = initializeApp(firebaseConfig);
     }
-
-    return getSdks(firebaseApp);
+  } else {
+    firebaseApp = getApp();
   }
 
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
-}
+  const firestore = getFirestore(firebaseApp);
+  const auth = getAuth(firebaseApp);
 
-export function getSdks(firebaseApp: FirebaseApp) {
-  return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
-  };
+  // Check if we are in a browser environment before trying to connect to emulators
+  if (typeof window !== 'undefined') {
+    if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+      // Set up emulators
+      if (location.hostname === 'localhost') {
+        try {
+          connectFirestoreEmulator(firestore, 'localhost', 8080);
+          connectAuthEmulator(auth, 'http://localhost:9099');
+          console.log('Using Firebase Emulators for Firestore and Auth');
+        } catch (e) {
+          console.error(
+            'Error connecting to Firebase Emulators. Make sure they are running.',
+            e
+          );
+        }
+      }
+    }
+  }
+
+  return { firebaseApp, auth, firestore };
 }
 
 export * from './provider';

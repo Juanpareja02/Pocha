@@ -1,4 +1,4 @@
-import type { Timestamp } from 'firebase/firestore';
+import type { FieldValue } from 'firebase/firestore';
 
 export type Suit = "oros" | "copas" | "espadas" | "bastos";
 export type Rank = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "S" | "C" | "R";
@@ -11,6 +11,7 @@ export interface Card {
 export interface Player {
   id: string; // Corresponds to User UID
   name: string;
+  isYou?: boolean;
   isHost: boolean;
   isAI: boolean;
   avatarUrl: string;
@@ -27,7 +28,7 @@ export interface User {
   avatarUrl?: string;
 }
 
-export type GamePhase = "LOBBY" | "BETTING" | "PLAYING" | "SCORING" | "FINISHED";
+export type GamePhase = "BETTING" | "PLAYING" | "SCORING" | "FINISHED";
 
 export interface GameLobby {
     id: string;
@@ -35,20 +36,34 @@ export interface GameLobby {
     creatorId: string;
     playerIds: string[];
     status: 'LOBBY' | 'PLAYING' | 'FINISHED';
-    createdAt: Timestamp | { toDate: () => Date };
+    createdAt: FieldValue;
 }
+
+export interface GameState {
+  gameId: string;
+  accessCode: string;
+  phase: GamePhase;
+  roundNumber: number;
+  maxRounds: number;
+  trumpSuit?: Suit;
+  dealerId: string;
+  players: Player[];
+  currentPlayerId: string;
+  currentTrick: { playerId: string; card: Card }[];
+}
+
 
 export interface Game {
   id: string;
   lobbyId: string;
   playerIds: string[];
-  players: Player[]; // Denormalized player data for the game
+  players?: Player[]; // Denormalized player data for the game
   status: GamePhase;
-  dealerId: string;
-  currentPlayerId: string;
-  currentTrick: { playerId: string; card: Card }[];
+  dealerId?: string;
+  currentPlayerId?: string;
+  currentTrick?: { playerId: string; card: Card }[];
   trumpSuit?: Suit;
   currentRound: number;
-  roundSequence: number[];
-  createdAt: Timestamp | { toDate: () => Date };
+  roundSequence?: number[];
+  createdAt: FieldValue;
 }
