@@ -9,10 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, errorEmitter } from "@/firebase";
 import { createLobby } from "@/lib/actions";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 
 export function LobbyForm() {
@@ -33,17 +33,21 @@ export function LobbyForm() {
     setIsCreating(true);
     try {
         const newLobbyId = await createLobby(user.uid);
+        // This navigation will be interrupted if the server action throws.
         router.push(`/play/${newLobbyId}`);
     } catch (error) {
         console.error("Error creating lobby:", error);
-        toast({ title: "Error al crear la sala", description: "No se pudo crear la partida. Inténtalo de nuevo.", variant: "destructive" });
+
+        // This is a server action, so we can't emit a client-side contextual error.
+        // We'll show a generic toast but the real error is on the server console.
+        toast({ title: "Error al crear la sala", description: "No se pudo crear la partida. Revisa la consola del servidor para más detalles.", variant: "destructive" });
         setIsCreating(false);
     }
   };
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
+    if (!user || !firestore) {
         toast({ title: "Debes iniciar sesión", description: "Inicia sesión para unirte a una partida.", variant: "destructive" });
         return;
     }
@@ -57,27 +61,36 @@ export function LobbyForm() {
     }
 
     setIsJoining(true);
-    try {
-        const lobbiesRef = collection(firestore, 'gameLobbies');
-        const q = query(lobbiesRef, where("accessCode", "==", accessCode.trim()));
-        const querySnapshot = await getDocs(q);
+    
+    const lobbiesRef = collection(firestore, 'gameLobbies');
+    const q = query(lobbiesRef, where("accessCode", "==", accessCode.trim()));
 
-        if (querySnapshot.empty) {
-            toast({ title: "Sala no encontrada", description: "No se encontró ninguna partida con ese código.", variant: "destructive" });
+    getDocs(q)
+        .then((querySnapshot) => {
+            if (querySnapshot.empty) {
+                toast({ title: "Sala no encontrada", description: "No se encontró ninguna partida con ese código.", variant: "destructive" });
+                setIsJoining(false);
+                return;
+            }
+
+            const lobbyDoc = querySnapshot.docs[0];
+            // In a real app, you would add the user to the player list here
+            // and then navigate. For now, we navigate directly.
+            router.push(`/play/${lobbyDoc.id}`);
+        })
+        .catch((serverError) => {
+            console.error("Error joining lobby:", serverError);
+            
+            const contextualError = new FirestorePermissionError({
+                path: 'gameLobbies',
+                operation: 'list', // getDocs is a 'list' operation
+            });
+            errorEmitter.emit('permission-error', contextualError);
+
+            // Also show a toast to the user. The detailed error will be in the dev console.
+            toast({ title: "Error al unirse a la sala", description: "No se pudo encontrar la partida. Verifica el código y los permisos.", variant: "destructive" });
             setIsJoining(false);
-            return;
-        }
-
-        const lobbyDoc = querySnapshot.docs[0];
-        // In a real app, you would add the user to the player list here
-        // and then navigate. For now, we navigate directly.
-        router.push(`/play/${lobbyDoc.id}`);
-
-    } catch (error) {
-        console.error("Error joining lobby:", error);
-        toast({ title: "Error al unirse a la sala", description: "No se pudo encontrar la partida. Verifica el código.", variant: "destructive" });
-        setIsJoining(false);
-    }
+        });
   };
   
   if (isUserLoading) {
