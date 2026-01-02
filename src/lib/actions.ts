@@ -30,7 +30,8 @@ export async function createLobby(creatorId: string): Promise<string> {
   const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   const lobbyCollectionRef = collection(firestore, 'gameLobbies');
 
-  const newLobby: Omit<GameLobby, 'id'> = {
+  // Firestore requires a plain object, not a class instance with methods.
+  const newLobbyData = {
     accessCode,
     creatorId,
     playerIds: [creatorId], // Creator is the first player
@@ -38,10 +39,10 @@ export async function createLobby(creatorId: string): Promise<string> {
     createdAt: serverTimestamp(),
   };
 
-  // Using addDoc directly as this is a server action
-  const docRef = await addDoc(lobbyCollectionRef, newLobby);
+  const docRef = await addDoc(lobbyCollectionRef, newLobbyData);
   return docRef.id;
 }
+
 
 /**
  * Adds a player to an existing game lobby.
@@ -67,13 +68,13 @@ export async function joinLobby(
  * @param lobby - The GameLobby object.
  * @returns The ID of the newly created game.
  */
-export async function createGameFromLobby(lobby: GameLobby): Promise<string> {
+export async function createGameFromLobby(lobbyId: string, playerIds: string[]): Promise<string> {
   const firestore = getFirestoreInstance();
   const gameCollectionRef = collection(firestore, 'games');
 
   const newGame: Omit<Game, 'id'> = {
-    lobbyId: lobby.id,
-    playerIds: lobby.playerIds,
+    lobbyId: lobbyId,
+    playerIds: playerIds,
     status: 'BETTING', // First phase after lobby
     currentRound: 1,
     createdAt: serverTimestamp(),
@@ -83,8 +84,8 @@ export async function createGameFromLobby(lobby: GameLobby): Promise<string> {
   const gameDocRef = await addDoc(gameCollectionRef, newGame);
 
   // Update lobby status to 'PLAYING'
-  const lobbyDocRef = doc(firestore, 'gameLobbies', lobby.id);
-  await updateDoc(lobbyDocRef, { status: 'PLAYING' });
+  const lobbyDocRef = doc(firestore, 'gameLobbies', lobbyId);
+  await updateDoc(lobbyDocRef, { status: 'PLAYING', gameId: gameDocRef.id });
 
   return gameDocRef.id;
 }

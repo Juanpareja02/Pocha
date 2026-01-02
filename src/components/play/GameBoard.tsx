@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { GameState, Card } from "@/lib/types";
+import type { Game, Card, GameLobby } from "@/lib/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserHand } from "./UserHand";
 import { GameTable } from "./GameTable";
@@ -9,151 +9,86 @@ import { PlayerDisplay } from "./PlayerDisplay";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Home, Info } from "lucide-react";
+import { Home, Info, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useUser } from "@/firebase";
+import { createGameFromLobby } from "@/lib/actions";
 
-export function GameBoard({ initialState }: { initialState: GameState }) {
-  const [gameState, setGameState] = useState<GameState>(initialState);
+export function GameBoard({ initialLobby, initialGame }: { initialLobby: GameLobby | null, initialGame: Game | null }) {
+  const [lobby, setLobby] = useState<GameLobby | null>(initialLobby);
+  const [game, setGame] = useState<Game | null>(initialGame);
+  const { user } = useUser();
   const router = useRouter();
   const isMobile = useIsMobile();
+  const [isStarting, setIsStarting] = useState(false);
 
-  const you = gameState.players.find((p) => p.isYou);
-  const otherPlayers = gameState.players.filter((p) => !p.isYou);
+  const handleStartGame = async () => {
+    if (!lobby || !user || user.uid !== lobby.creatorId) return;
 
-  const handleCardPlay = (card: Card) => {
-    console.log("Played card:", card);
-    // This is where you would update the actual game state
-    // For now, we'll just remove the card from the user's hand for demo purposes
-    setGameState(prev => ({
-        ...prev,
-        players: prev.players.map(p => 
-            p.isYou ? { ...p, hand: p.hand.filter(c => !(c.rank === card.rank && c.suit === card.suit)) } : p
-        ),
-        currentTrick: [...prev.currentTrick, { playerId: you!.id, card }],
-        currentPlayerId: otherPlayers[0]?.id || ""
-    }));
-  };
-
-  // Simplified logic for playable cards
-  const getPlayableCards = (): Card[] => {
-    if (!you) return [];
-    const leadingSuit = gameState.currentTrick[0]?.card.suit;
-    if (leadingSuit) {
-      const cardsInSuit = you.hand.filter(c => c.suit === leadingSuit);
-      if (cardsInSuit.length > 0) {
-        return cardsInSuit;
-      }
+    setIsStarting(true);
+    try {
+      // This server action will create the game document and update the lobby.
+      await createGameFromLobby(lobby.id, lobby.playerIds);
+      // The useEffect on the page will handle the navigation.
+    } catch (error) {
+      console.error("Failed to start game:", error);
+      setIsStarting(false);
+      // Optionally, show a toast to the user
     }
-    return you.hand;
   };
-  
-  const renderDesktopLayout = () => {
-    const topPlayer = otherPlayers.length > 1 ? otherPlayers[1] : null;
-    const leftPlayer = otherPlayers.length > 0 ? otherPlayers[0] : null;
-    const rightPlayer = otherPlayers.length > 2 ? otherPlayers[2] : null;
+
+  // If we are in the lobby phase
+  if (lobby && !game) {
+    const isHost = user?.uid === lobby.creatorId;
 
     return (
-      <div className="relative h-screen w-full overflow-hidden bg-[radial-gradient(ellipse_at_center,rgba(103,58,183,0.1)_0%,transparent_60%)] p-4">
-        
-        {topPlayer && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2">
-                <PlayerDisplay player={topPlayer} isCurrentPlayer={gameState.currentPlayerId === topPlayer.id} phase={gameState.phase} position="top" />
-            </div>
-        )}
-        {leftPlayer && (
-            <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <PlayerDisplay player={leftPlayer} isCurrentPlayer={gameState.currentPlayerId === leftPlayer.id} phase={gameState.phase} position="left" />
-            </div>
-        )}
-        {rightPlayer && (
-             <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                <PlayerDisplay player={rightPlayer} isCurrentPlayer={gameState.currentPlayerId === rightPlayer.id} phase={gameState.phase} position="right" />
-            </div>
-        )}
-
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <GameTable trick={gameState.currentTrick} trumpSuit={gameState.trumpSuit} roundNumber={gameState.roundNumber} />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
+        <h1 className="text-4xl font-bold mb-2">Sala de Espera</h1>
+        <p className="text-muted-foreground mb-6">Código de la partida:</p>
+        <div className="bg-secondary px-8 py-4 rounded-lg border mb-8">
+            <p className="text-4xl font-mono font-bold tracking-widest">{lobby.accessCode}</p>
         </div>
 
-        {you && (
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl">
-            <UserHand hand={you.hand} onCardPlay={handleCardPlay} playableCards={getPlayableCards()} />
-          </div>
-        )}
-
-        <div className="absolute bottom-4 left-4 flex flex-col items-center gap-2">
-           <Avatar className="w-16 h-16 border-2 border-background">
-             <AvatarImage src={you?.avatarUrl} />
-             <AvatarFallback>{you?.name.substring(0, 2)}</AvatarFallback>
-           </Avatar>
-           <p className="font-semibold text-sm">{you?.name}</p>
-           <Badge>Puntos: {you?.score}</Badge>
-        </div>
-      </div>
-    );
-  };
-  
-  const renderMobileLayout = () => {
-    return (
-       <div className="flex h-screen w-full flex-col p-2 gap-2">
-            <div className="grid grid-cols-3 gap-2">
-                {otherPlayers.map(p => (
-                    <div key={p.id} className="flex flex-col items-center gap-1 p-1 rounded-lg bg-card/50 border">
-                        <Avatar className="w-10 h-10">
-                            <AvatarImage src={p.avatarUrl} />
-                            <AvatarFallback>{p.name.substring(0,2)}</AvatarFallback>
+        <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Jugadores ({lobby.playerIds.length})</h2>
+            <div className="flex gap-4 justify-center">
+                {lobby.playerIds.map(playerId => (
+                    <div key={playerId} className="flex flex-col items-center gap-2">
+                        <Avatar className="w-16 h-16">
+                            <AvatarImage src={`https://picsum.photos/seed/${playerId}/150/150`} />
+                            <AvatarFallback>{playerId.substring(0,2)}</AvatarFallback>
                         </Avatar>
-                        <p className="text-xs font-bold truncate w-full text-center">{p.name}</p>
-                        <Badge variant={gameState.currentPlayerId === p.id ? "default": "secondary"} className="text-[10px] px-1 h-4">
-                          {p.bet}/{p.tricksWon}
-                        </Badge>
+                        <p className="font-medium">{user?.uid === playerId ? "Tú" : `Jugador...`}</p>
                     </div>
                 ))}
             </div>
+        </div>
 
-            <div className="flex-grow flex items-center justify-center">
-                 <GameTable trick={gameState.currentTrick} trumpSuit={gameState.trumpSuit} roundNumber={gameState.roundNumber} />
-            </div>
-            
-            {you && (
-                <div className="w-full">
-                    <UserHand hand={you.hand} onCardPlay={handleCardPlay} playableCards={getPlayableCards()} />
-                </div>
-            )}
-       </div>
-    );
-  };
-
-  return (
-    <div className="w-full min-h-screen">
-      <div className="absolute top-4 left-4 z-20">
-        <Button variant="outline" size="icon" onClick={() => router.push('/lobby')}>
-          <Home className="w-4 h-4" />
+        {isHost && (
+          <Button onClick={handleStartGame} disabled={isStarting} size="lg" className="w-full max-w-xs">
+            {isStarting ? "Empezando..." : <><Play className="mr-2"/>Empezar Partida</>}
+          </Button>
+        )}
+        {!isHost && (
+            <p className="text-muted-foreground">Esperando a que el anfitrión inicie la partida...</p>
+        )}
+         <Button variant="link" onClick={() => router.push('/lobby')} className="mt-4">
+          Salir de la sala
         </Button>
       </div>
-      <div className="absolute top-4 right-4 z-20">
-        <Sheet>
-            <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                    <Info className="w-4 h-4" />
-                </Button>
-            </SheetTrigger>
-            <SheetContent>
-                <SheetHeader>
-                    <SheetTitle>Info de la Partida</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4 space-y-4">
-                    <p><strong>ID Partida:</strong> {gameState.accessCode}</p>
-                    <p><strong>Ronda:</strong> {gameState.roundNumber}</p>
-                    <p><strong>Fase:</strong> {gameState.phase}</p>
-                    <p><strong>Triunfo:</strong> <span className="capitalize">{gameState.trumpSuit}</span></p>
-                    <p><strong>Turno:</strong> {gameState.players.find(p => p.id === gameState.currentPlayerId)?.name}</p>
-                </div>
-            </SheetContent>
-        </Sheet>
-      </div>
-      {isMobile ? renderMobileLayout() : renderDesktopLayout()}
-    </div>
-  );
+    );
+  }
+
+  // If we have a game, render the game board
+  // This part needs to be fully implemented with the actual game state
+  if (game) {
+    // The existing GameBoard logic would go here.
+    // We need to transform the `game` object into the `gameState` object expected by the components.
+    // This is a placeholder for now.
+    return <div className="flex items-center justify-center min-h-screen">¡El juego ha comenzado! (ID: {game.id})</div>
+  }
+
+  return <div className="flex items-center justify-center min-h-screen">Cargando...</div>;
+  
 }

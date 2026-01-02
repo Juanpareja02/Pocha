@@ -37,6 +37,7 @@ export interface GameLobby {
     playerIds: string[];
     status: 'LOBBY' | 'PLAYING' | 'FINISHED';
     createdAt: FieldValue;
+    gameId?: string;
 }
 
 export interface GameState {

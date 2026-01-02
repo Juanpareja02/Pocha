@@ -33,14 +33,11 @@ export function LobbyForm() {
     setIsCreating(true);
     try {
         const newLobbyId = await createLobby(user.uid);
-        // This navigation will be interrupted if the server action throws.
+        // Navigate to the play page, which will act as the lobby view
         router.push(`/play/${newLobbyId}`);
     } catch (error) {
         console.error("Error creating lobby:", error);
-
-        // This is a server action, so we can't emit a client-side contextual error.
-        // We'll show a generic toast but the real error is on the server console.
-        toast({ title: "Error al crear la sala", description: "No se pudo crear la partida. Revisa la consola del servidor para más detalles.", variant: "destructive" });
+        toast({ title: "Error al crear la sala", description: "No se pudo crear la partida. Revisa la consola para más detalles.", variant: "destructive" });
         setIsCreating(false);
     }
   };
