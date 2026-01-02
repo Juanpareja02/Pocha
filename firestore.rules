@@ -40,6 +40,7 @@ service cloud.firestore {
      * @allow (read) Any player in the lobby can read its data.
      * @allow (update) Players can be added, and the creator can change the status.
      * @allow (delete) Only the creator can delete the lobby.
+     * @allow (list) Any signed-in user can query for lobbies (needed to join by code).
      */
     match /gameLobbies/{gameLobbyId} {
       allow create: if isSignedIn() 
@@ -49,7 +50,7 @@ service cloud.firestore {
       allow update: if isPlayer(resource) // Allows players to join
                     || isCreator(resource); // Allows creator to change status
       allow delete: if isCreator(resource);
-      allow list: if false; // Do not allow listing all lobbies
+      allow list: if isSignedIn(); // Allow signed-in users to query/list to find a lobby by code.
     }
 
     /**
