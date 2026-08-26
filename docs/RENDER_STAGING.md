@@ -26,7 +26,7 @@ Referencias oficiales: [Web Services](https://render.com/docs/web-services),
 | Branch | `main` |
 | Root Directory | `server` |
 | Runtime | Node |
-| Build Command | `npm ci && npx prisma generate && npm run build` |
+| Build Command | `npm ci --include=dev && npx --no-install prisma generate && npm run build` |
 | Start Command | `npm run start:render` |
 | Instance Type | `Free` |
 | Health Check Path | `/health/ready` |
@@ -46,7 +46,11 @@ ejecuta en Linux. No se necesita PowerShell ni una ruta de Windows.
 6. En **Root Directory**, escribe `server`.
 7. En **Runtime**, selecciona `Node`.
 8. En **Build Command**, escribe:
-   `npm ci && npx prisma generate && npm run build`
+   `npm ci --include=dev && npx --no-install prisma generate && npm run build`
+
+   `--include=dev` es intencionado: Render puede construir con `NODE_ENV=production`,
+   pero la compilación necesita `@nestjs/cli`, que sigue siendo una dependencia de
+   desarrollo y no se instala durante el runtime.
 9. En **Start Command**, escribe: `npm run start:render`.
 10. En **Instance Type**, selecciona **Free**.
 11. En **Advanced**, establece **Health Check Path** en `/health/ready`.
