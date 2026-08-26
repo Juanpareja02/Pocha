@@ -1,0 +1,12 @@
+{
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "La Pocha",
+        "supportEmail": "parejajuan17@gmail.com"
+      }
+    }
+  }
+}

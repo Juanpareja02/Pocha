@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id
+  username         String   @unique
+  displayName      String   @default("Invitado")
+  avatarSeed       Int      @default(0)
+  authProvider     String   @default("development")
+  authProviderId   String?
+  isGuest          Boolean  @default(true)
+  avatar           String?
+  elo              Int      @default(1000)
+  peakElo          Int      @default(1000)
+  gamesPlayed      Int      @default(0)
+  wins             Int      @default(0)
+  podiums          Int      @default(0)
+  averagePosition  Float?
+  predictionAccuracy Float  @default(0)
+  casualGamesPlayed Int     @default(0)
+  casualWins       Int      @default(0)
+  casualPodiums    Int      @default(0)
+  casualAveragePosition Float?
+  casualPredictionAccuracy Float @default(0)
+  disconnectRate   Float    @default(0)
+  rankedGamesPlayed Int      @default(0)
+  rankedWins       Int      @default(0)
+  rankedPodiums    Int      @default(0)
+  rankedAveragePosition Float?
+  rankedBestElo    Int      @default(1000)
+  rankedPredictionAccuracy Float @default(0)
+  rankedAbandons   Int      @default(0)
+  rankedDisconnects Int     @default(0)
+  rankedTimeouts   Int      @default(0)
+  queuePenaltyUntil DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+  gamePlayers      GamePlayer[]
+  ratingHistory    RatingHistory[]
+  seasonStats      SeasonPlayerStats[]
+
+  @@index([elo, id])
+
+  @@unique([authProvider, authProviderId])
+}
+
+model RankedSeason {
+  id        String   @id
+  name      String
+  number    Int      @unique
+  startsAt  DateTime
+  endsAt    DateTime?
+  rulesetId String
+  version   Int
+  status    String   @default("UPCOMING")
+  placementGames Int @default(10)
+  config    Json
+  createdAt DateTime @default(now())
+  games     Game[]
+  seasonStats SeasonPlayerStats[]
+}
+
+model Game {
+  id             String        @id
+  roomId         String?
+  mode           String
+  status         String
+  rulesetId      String
+  rulesetVersion Int
+  stateVersion   Int           @default(0)
+  seasonId       String?
+  snapshot       Json
+  createdAt      DateTime      @default(now())
+  finishedAt     DateTime?
+  season         RankedSeason? @relation(fields: [seasonId], references: [id])
+  players        GamePlayer[]
+  events         GameEvent[]
+  results        GameResult[]
+
+  @@index([roomId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model GamePlayer {
+  gameId   String
+  userId   String
+  seat     Int
+  position Int?
+  score    Int?
+  joinedAt DateTime @default(now())
+  game     Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user     User @relation(fields: [userId], references: [id])
+
+  @@id([gameId, userId])
+  @@unique([gameId, seat])
+  @@index([userId, gameId])
+}
+
+model GameEvent {
+  id        String   @id @default(cuid())
+  gameId    String
+  type      String
+  version   Int
+  payload   Json
+  createdAt DateTime @default(now())
+  game      Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId, version])
+}
+
+model GameResult {
+  id        String   @id @default(cuid())
+  gameId    String
+  userId    String
+  position  Int
+  score     Int
+  eloDelta  Int?
+  oldRating Int?
+  newRating Int?
+  rankId    String?
+  previousRankId String?
+  promoted  Boolean @default(false)
+  demoted   Boolean @default(false)
+  abandoned Boolean @default(false)
+  createdAt DateTime @default(now())
+  game      Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, userId])
+  @@index([userId, createdAt])
+  @@index([gameId, createdAt])
+}
+
+model RatingHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  gameId    String?
+  seasonId  String?
+  before    Int
+  delta     Int
+  after     Int
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([gameId, createdAt])
+  @@index([seasonId, createdAt])
+}
+
+model MatchmakingEntry {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  mode      String
+  elo       Int
+  range     Int
+  createdAt DateTime @default(now())
+  queueType String @default("casual")
+  seasonId String?
+  rulesetId String?
+  rulesetVersion Int?
+  provisional Boolean @default(false)
+  region String?
+
+  @@index([queueType, seasonId, createdAt])
+}
+
+model SeasonPlayerStats {
+  seasonId          String
+  userId            String
+  rating            Int      @default(1000)
+  peakRating        Int      @default(1000)
+  placementGames    Int      @default(0)
+  gamesPlayed       Int      @default(0)
+  wins              Int      @default(0)
+  podiums           Int      @default(0)
+  averagePosition   Float?
+  predictionAccuracy Float  @default(0)
+  updatedAt         DateTime @updatedAt
+  season            RankedSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([seasonId, userId])
+  @@index([seasonId, rating, userId])
+}

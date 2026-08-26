@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run prisma:validate
+        env:
+          DATABASE_URL: postgresql://pocha:pocha@localhost:5432/pocha?schema=public
+      - run: npm run prisma:generate
+        env:
+          DATABASE_URL: postgresql://pocha:pocha@localhost:5432/pocha?schema=public
+      - run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --debug --dart-define=STAGING_API_URL=https://api.example.invalid --dart-define=STAGING_SOCKET_URL=https://api.example.invalid --dart-define=POCHA_AUTH_MODE=development
+
+  repository:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git diff --check

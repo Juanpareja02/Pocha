@@ -1,0 +1,8 @@
+<!-- Copy this intent-filter into AndroidManifest.xml when a real HTTPS domain exists.
+     Replace YOUR_DOMAIN with the verified production host and publish assetlinks.json. -->
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="https" android:host="YOUR_DOMAIN" android:pathPrefix="/join" />
+</intent-filter>

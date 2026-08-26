@@ -1,0 +1,30 @@
+{
+  "id": "classic",
+  "version": 1,
+  "players": { "minimum": 3, "maximum": 6 },
+  "deck": {
+    "suits": ["oros", "copas", "espadas", "bastos"],
+    "ranks": ["as", "dos", "tres", "cuatro", "cinco", "seis", "siete", "sota", "caballo", "rey"],
+    "strengthHighToLow": ["as", "tres", "rey", "caballo", "sota", "siete", "seis", "cinco", "cuatro", "dos"]
+  },
+  "roundSequenceByPlayerCount": {
+    "3": [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1],
+    "4": [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1],
+    "5": [1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1],
+    "6": [1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1]
+  },
+  "trumpMode": "revealed",
+  "auctionEnabled": false,
+  "allowNoTrump": false,
+  "mustFollowSuit": true,
+  "mustOvertrump": false,
+  "lastBidCannotMatchTrickCount": true,
+  "scoring": {
+    "exactBase": 10,
+    "exactPerTrick": 5,
+    "missPenaltyPerTrick": 5,
+    "roundMultiplier": 1,
+    "pochaBonusEnabled": false,
+    "pochaBonus": 0
+  }
+}

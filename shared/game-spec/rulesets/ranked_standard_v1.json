@@ -1,0 +1,15 @@
+{
+  "extends": "classic@1",
+  "id": "ranked_standard",
+  "version": 1,
+  "playerCount": 4,
+  "players": { "fixed": 4 },
+  "roundSequence": "from:classic@1",
+  "trumpRules": "from:classic@1",
+  "biddingRules": "from:classic@1",
+  "scoring": "from:classic@1",
+  "specialRounds": [],
+  "timeouts": "server-session-defaults",
+  "official": true,
+  "matchmaking": { "mode": "ranked" }
+}

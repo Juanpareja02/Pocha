@@ -1,0 +1,7 @@
+{
+  "extends": "classic@1",
+  "id": "auction",
+  "version": 1,
+  "trumpMode": "chosen-by-bid-winner",
+  "auctionEnabled": true
+}

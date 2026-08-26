@@ -1,0 +1,72 @@
+{
+  "name": "pocha-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend autoritativo de La Pocha",
+  "engines": {
+    "node": ">=22.14.0 <23"
+  },
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\"",
+    "start": "nest start",
+    "start:prod": "node dist/main.js",
+    "start:render": "sh scripts/render-start.sh",
+    "start:dev": "nest start --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:status": "prisma migrate status",
+    "prisma:validate": "prisma validate",
+    "config:check": "tsx src/config/config-cli.ts",
+    "simulate": "tsx src/simulation/cli.ts",
+    "simulate:rating": "tsx src/simulation/rating-cli.ts",
+    "simulate:season": "tsx src/simulation/season-cli.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "staging:smoke": "tsx scripts/staging-infrastructure-smoke.ts",
+    "staging:live-smoke": "tsx scripts/staging-live-smoke.ts",
+    "staging:local-live-smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/staging-local-live-smoke.ps1"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.0.0",
+    "@nestjs/throttler": "^6.0.0",
+    "@prisma/client": "^6.0.0",
+    "prisma": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "firebase-admin": "^14.3.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.5.0",
+    "socket.io-client": "^4.8.3",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

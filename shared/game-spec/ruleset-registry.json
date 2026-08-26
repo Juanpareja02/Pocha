@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "official": [
+    "classic@1",
+    "auction@1",
+    "ranked_standard@1"
+  ],
+  "ranked": "ranked_standard@1"
+}

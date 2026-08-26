@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "scoreCases": [
+    { "bid": 0, "tricks": 0, "score": 10 },
+    { "bid": 1, "tricks": 1, "score": 15 },
+    { "bid": 4, "tricks": 4, "score": 30 },
+    { "bid": 2, "tricks": 1, "score": -5 },
+    { "bid": 1, "tricks": 2, "score": -5 },
+    { "bid": 5, "tricks": 0, "score": -25 }
+  ],
+  "comparisonCases": [
+    { "first": "oros:as", "second": "oros:tres", "lead": "oros", "trump": null, "winner": "oros:as" },
+    { "first": "oros:as", "second": "copas:tres", "lead": "copas", "trump": null, "winner": "copas:tres" },
+    { "first": "oros:dos", "second": "copas:dos", "lead": "oros", "trump": "copas", "winner": "copas:dos" },
+    { "first": "copas:rey", "second": "copas:tres", "lead": "copas", "trump": null, "winner": "copas:tres" }
+  ],
+  "legalCardCases": [
+    {
+      "hand": ["oros:as", "copas:as"],
+      "trick": ["oros:dos"],
+      "trump": null,
+      "mustOvertrump": false,
+      "legal": ["oros:as"]
+    },
+    {
+      "hand": ["oros:as", "copas:as"],
+      "trick": ["espadas:dos"],
+      "trump": null,
+      "mustOvertrump": false,
+      "legal": ["oros:as", "copas:as"]
+    },
+    {
+      "hand": ["oros:dos", "copas:as"],
+      "trick": ["espadas:dos", "oros:rey"],
+      "trump": "oros",
+      "mustOvertrump": true,
+      "legal": ["oros:dos"]
+    }
+  ]
+}
