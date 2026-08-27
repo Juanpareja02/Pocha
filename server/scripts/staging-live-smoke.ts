@@ -424,7 +424,7 @@ function emitRoomReady(
   roomId: string,
   playerCount: number,
   label = 'unknown',
-  expectedUserId?: string,
+  minimumReadyCount = playerCount,
 ): Promise<Room> {
   let lastRoom: Room | undefined;
   return new Promise((resolve, reject) => {
@@ -451,11 +451,8 @@ function emitRoomReady(
       if (
         updated.roomId !== roomId ||
         updated.players?.length !== playerCount ||
-        (expectedUserId
-          ? !updated.players.some(
-              (player) => player.userId === expectedUserId && player.ready,
-            )
-          : updated.players.some((player) => !player.ready))
+        updated.players.filter((player) => player.ready).length <
+          minimumReadyCount
       )
         return;
       cleanup();
@@ -511,7 +508,7 @@ async function privateRoom(
       room.roomId,
       clients.length,
       'private-' + index,
-      room.players?.[index]?.userId,
+      index + 1,
     );
   }
   const started = clients.map((client, index) =>
