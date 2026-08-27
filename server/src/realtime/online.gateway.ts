@@ -207,10 +207,7 @@ export class OnlineGateway
   }
 
   onModuleDestroy(): void {
-    const sockets = this.server?.sockets?.sockets;
-    if (sockets) {
-      for (const socket of sockets.values()) socket.disconnect(true);
-    }
+    for (const socket of this.localSockets()) socket.disconnect(true);
     this.invalidActionAttempts.clear();
     this.connectedSockets.clear();
     this.activeGames = 0;
@@ -684,8 +681,7 @@ export class OnlineGateway
     // Render Free runs this service as one process and no Socket.IO adapter is
     // configured. Use the local socket registry so state broadcasts cannot be
     // delayed or lost behind a Redis fetch for every game event.
-    for (const raw of this.server.sockets.sockets.values()) {
-      const socket = raw as unknown as OnlineSocket;
+    for (const socket of this.localSockets()) {
       if (socket.data.gameId !== gameId || !socket.data.principal) continue;
       const snapshot = session.snapshot(socket.data.principal.userId);
       socket.emit('game:event', { event, stateVersion });
@@ -700,8 +696,7 @@ export class OnlineGateway
   ): Promise<void> {
     // Render Free runs one process and no Socket.IO adapter is configured.
     // Avoid an asynchronous adapter lookup when assigning the game context.
-    for (const raw of this.server.sockets.sockets.values()) {
-      const socket = raw as unknown as OnlineSocket;
+    for (const socket of this.localSockets()) {
       if (!socket.rooms.has(roomId)) continue;
       socket.data.gameId = gameId;
     }
@@ -712,9 +707,7 @@ export class OnlineGateway
       const record = this.rooms.requireRoom(room.roomId);
       const created = await this.sessions.create(record);
       const started = this.rooms.markStarted(record.roomId, created.gameId);
-      const sockets = await this.server.fetchSockets();
-      for (const raw of sockets) {
-        const socket = raw as unknown as OnlineSocket;
+      for (const socket of this.localSockets()) {
         const userId = socket.data.principal?.userId;
         if (
           !userId ||
@@ -747,6 +740,13 @@ export class OnlineGateway
 
   private publicRoom(room: RoomView): RoomView {
     return { ...room, players: room.players.map((player) => ({ ...player })) };
+  }
+
+  private localSockets(): Iterable<OnlineSocket> {
+    const namespace = this.server as unknown as
+      | { sockets?: Map<string, OnlineSocket> }
+      | undefined;
+    return namespace?.sockets?.values() ?? [];
   }
 
   private readToken(socket: OnlineSocket): unknown {

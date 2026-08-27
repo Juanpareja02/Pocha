@@ -400,24 +400,55 @@ function emitRoomReady(
   socket: Socket,
   roomId: string,
   playerCount: number,
+  label = 'unknown',
 ): Promise<Room> {
+  let lastRoom: Room | undefined;
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      socket.off('room:updated', onUpdated);
-      reject(new Error('room-ready-timeout'));
+      cleanup();
+      reject(
+        new Error(
+          'room-ready-timeout:' +
+            label +
+            ':players=' +
+            (lastRoom?.players?.length ?? 0) +
+            ':ready=' +
+            (lastRoom?.players?.filter((player) => player.ready).length ?? 0),
+        ),
+      );
     }, 10_000);
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.off('room:updated', onUpdated);
+      socket.off('game:error', onError);
+    };
     const onUpdated = (updated: Room) => {
+      lastRoom = updated;
       if (
         updated.roomId !== roomId ||
         updated.players?.length !== playerCount ||
         updated.players.some((player) => !player.ready)
       )
         return;
-      clearTimeout(timer);
-      socket.off('room:updated', onUpdated);
+      cleanup();
       resolve(updated);
     };
+    const onError = (payload: {
+      readonly code?: string;
+      readonly message?: string;
+    }) => {
+      cleanup();
+      reject(
+        new Error(
+          'room-ready:error:' +
+            (payload.code ?? 'unknown') +
+            ':' +
+            (payload.message ?? 'unknown'),
+        ),
+      );
+    };
     socket.on('room:updated', onUpdated);
+    socket.on('game:error', onError);
     socket.emit('room:ready', { roomId });
   });
 }
@@ -447,7 +478,9 @@ async function privateRoom(
     await joined;
   }
   await Promise.all(
-    clients.map((client) => emitRoomReady(client, room.roomId, clients.length)),
+    clients.map((client, index) =>
+      emitRoomReady(client, room.roomId, clients.length, 'private-' + index),
+    ),
   );
   const started = clients.map((client, index) =>
     once<Snapshot>(client, 'game:started', 15_000).catch((error: unknown) => {
