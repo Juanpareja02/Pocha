@@ -681,8 +681,10 @@ export class OnlineGateway
   ): Promise<void> {
     const session = this.sessions.get(gameId);
     if (!session) return;
-    const sockets = await this.server.fetchSockets();
-    for (const raw of sockets) {
+    // Render Free runs this service as one process and no Socket.IO adapter is
+    // configured. Use the local socket registry so state broadcasts cannot be
+    // delayed or lost behind a Redis fetch for every game event.
+    for (const raw of this.server.sockets.sockets.values()) {
       const socket = raw as unknown as OnlineSocket;
       if (socket.data.gameId !== gameId || !socket.data.principal) continue;
       const snapshot = session.snapshot(socket.data.principal.userId);
