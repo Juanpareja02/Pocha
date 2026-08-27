@@ -121,6 +121,10 @@ exec npm run start:prod
 El wrapper de arranque reintenta hasta cinco veces adicionales si un rolling
 deploy encuentra temporalmente el advisory lock de Prisma (`P1002`); un fallo
 persistente sigue deteniendo el servicio.
+
+Las migraciones usan `DIRECT_DATABASE_URL` si existe; si no, el wrapper deriva
+el endpoint directo de Neon quitando `-pooler` de `DATABASE_URL`. La aplicación
+conserva `DATABASE_URL` con pooler para sus conexiones normales.
 Después ejecuta el seed idempotente de la temporada `STAGING SEASON` cuando
 `APP_ENV=staging`, porque Render Free no ofrece un hook de pre-deploy.
 No se debe configurar ni ejecutar contra staging:
