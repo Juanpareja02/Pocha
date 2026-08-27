@@ -639,12 +639,14 @@ async function driveGame(
     await sleep(25);
     const replacement = await connect(clientAccounts[index]);
     sockets.add(replacement);
+    // Observe before rejoining so a bot turn cannot advance the game before
+    // the replacement socket starts consuming snapshots.
+    observe(replacement, index);
     const rejoined = once<Snapshot>(replacement, 'game:snapshot', 15_000);
     replacement.emit('room:join', { code: roomCode });
     const reconnectSnapshot = await rejoined;
     if (reconnectSnapshot.mySeat !== initial[index].mySeat)
       throw new Error('reconnect:seat-changed');
-    observe(replacement, index);
     // The old socket may have marked the current action as handled just
     // before disconnecting. Let the replacement socket drive that snapshot.
     handled.delete(
