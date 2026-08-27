@@ -645,6 +645,15 @@ async function driveGame(
     if (reconnectSnapshot.mySeat !== initial[index].mySeat)
       throw new Error('reconnect:seat-changed');
     observe(replacement, index);
+    // The old socket may have marked the current action as handled just
+    // before disconnecting. Let the replacement socket drive that snapshot.
+    handled.delete(
+      ids[index] +
+        ':' +
+        reconnectSnapshot.stateVersion +
+        ':' +
+        reconnectSnapshot.state.status,
+    );
     drive(replacement, index, reconnectSnapshot);
   }
 
