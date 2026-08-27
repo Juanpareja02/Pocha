@@ -652,7 +652,10 @@ async function driveGame(
     finishedPromise,
     sleep(90_000).then(() => {
       throw new Error(
-        \`game:finish-timeout:last=\${lastSnapshot.stateVersion}:\${lastSnapshot.state.status}\`,
+        'game:finish-timeout:last=' +
+          lastSnapshot.stateVersion +
+          ':' +
+          lastSnapshot.state.status,
       );
     }),
   ]);
