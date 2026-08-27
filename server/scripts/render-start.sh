@@ -17,4 +17,12 @@ while ! npx --no-install prisma migrate deploy; do
   migration_attempt=$((migration_attempt + 1))
   sleep 5
 done
+
+# The free Render service has no pre-deploy hook. Keep the isolated staging
+# season available for ranked matchmaking; the seed is an idempotent upsert and
+# is deliberately not run for a production process.
+if [ "${APP_ENV:-}" = "staging" ]; then
+  npx --no-install prisma db seed
+fi
+
 exec npm run start:prod

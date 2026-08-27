@@ -121,6 +121,8 @@ exec npm run start:prod
 El wrapper de arranque reintenta hasta cinco veces adicionales si un rolling
 deploy encuentra temporalmente el advisory lock de Prisma (`P1002`); un fallo
 persistente sigue deteniendo el servicio.
+Después ejecuta el seed idempotente de la temporada `STAGING SEASON` cuando
+`APP_ENV=staging`, porque Render Free no ofrece un hook de pre-deploy.
 No se debe configurar ni ejecutar contra staging:
 
 ```text
