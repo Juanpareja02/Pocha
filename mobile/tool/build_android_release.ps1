@@ -43,12 +43,24 @@ function Assert-PublicHttpsUrl([string]$name, [string]$value) {
 Assert-PublicHttpsUrl 'STAGING_API_URL' $ServerUrl
 Assert-PublicHttpsUrl 'STAGING_SOCKET_URL' $SocketUrl
 
-$firebase = Get-Command firebase -ErrorAction SilentlyContinue
+# On Windows PowerShell, the firebase.ps1 shim promotes the CLI's progress
+# message to a terminating error under ErrorActionPreference=Stop. Prefer the
+# native .cmd shim and keep the generic command as the cross-platform fallback.
+$firebase = Get-Command firebase.cmd -ErrorAction SilentlyContinue
+if (-not $firebase) {
+  $firebase = Get-Command firebase -ErrorAction SilentlyContinue
+}
 if (-not $firebase) {
   throw 'Firebase CLI is required to resolve the Android app configuration'
 }
 
-$appsText = & $firebase.Source apps:list --project $ProjectId --json 2>$null | Out-String
+$cliErrorAction = $ErrorActionPreference
+try {
+  $ErrorActionPreference = 'Continue'
+  $appsText = & $firebase.Source apps:list --project $ProjectId --json 2>$null | Out-String
+} finally {
+  $ErrorActionPreference = $cliErrorAction
+}
 $appsJsonStart = $appsText.IndexOf('{')
 if ($appsJsonStart -lt 0) {
   throw 'Firebase apps:list did not return JSON'
@@ -64,7 +76,12 @@ if ($androidApps.Count -ne 1) {
 $androidApp = $androidApps[0]
 Write-Output "Resolved Firebase Android app for com.pocha.mobile: $($androidApp.appId)"
 
-$sdkText = & $firebase.Source apps:sdkconfig android $androidApp.appId --project $ProjectId 2>$null | Out-String
+try {
+  $ErrorActionPreference = 'Continue'
+  $sdkText = & $firebase.Source apps:sdkconfig android $androidApp.appId --project $ProjectId 2>$null | Out-String
+} finally {
+  $ErrorActionPreference = $cliErrorAction
+}
 $sdkJsonStart = $sdkText.IndexOf('{')
 if ($sdkJsonStart -lt 0) {
   throw 'Firebase apps:sdkconfig did not return JSON'

@@ -1,35 +1,54 @@
-# QA Android staging
+# QA Android contra staging
 
-Estado: `PENDING_HUMAN_INPUT`.
+Estado actual: `PENDING HUMAN INPUT`
+Backend: `https://pocha-staging.onrender.com`
+Paquete: `com.pocha.mobile`
 
-No existe todavía un dispositivo Android físico conectado ni un backend staging
-HTTPS público. La checklist automatizada de Flutter sigue verde, y el backend
-local se ha probado con Firebase real, PostgreSQL real, Redis real y
-Socket.IO; ninguna de esas pruebas sustituye la QA de dispositivo real ni la
-validación TLS.
-
-## Evidencia automatizada disponible
+## Evidencia ya verificada
 
 - `flutter analyze`: sin incidencias.
 - `flutter test`: 62 tests correctos.
-- `npm run staging:local-live-smoke`: health, autenticación, salas, partidas
-  casual/ranked, reconexión, privacidad, persistencia, exportación y borrado
-  anonimizado correctos.
-- `adb devices`: no hay dispositivo conectado.
+- APK y AAB release generados con Firebase Android real, API HTTPS y
+  Socket.IO/WSS de Render staging.
+- Smoke E2E externo del backend: `VERIFIED` para Auth, salas, partidas,
+  reconexión, casual, ranked, persistencia, Redis, exportación y borrado.
+- `flutter devices`: solo Windows, Chrome y Edge.
+- `adb devices`: lista vacía.
 
-No se presenta como ejecutada ninguna prueba de pantalla, red móvil, tamaño,
-memoria, deep link ni instalación firmada en hardware real.
+## Cómo continuar cuando conectes un Android
 
-## Pendiente de ejecutar en dispositivo
+1. Activa Opciones de desarrollador y Depuración USB.
+2. Conecta el teléfono por USB, acepta la huella RSA y comprueba:
 
-- Inicio, onboarding, navegación y tema claro/oscuro.
-- Calculadora: crear ronda, puntuación, undo, background, restauración e
-  historial.
-- Solitario: Easy, Normal y Hard; cartas legales, pausa y restauración.
-- Online: crear sala, unirse, ready, partida y reconexión.
-- Cambio Wi-Fi/datos y modo avión.
-- Ranked: cola, partida, ELO, historial y leaderboard.
-- Responsive: mesa, calculadora, lobby, leaderboard y perfil.
-- Deep link HTTPS `/join/<CODE>` con dominio verificado.
+   ```text
+   adb devices
+   flutter devices
+   ```
 
-No hay resultados reales que reportar todavía; no se simula una aprobación.
+3. Instala el APK:
+
+   ```text
+   adb install -r mobile/build/app/outputs/flutter-apk/app-release.apk
+   ```
+
+4. Ejecuta manualmente este recorrido contra staging:
+
+   - alta anónima, Email/Password, logout y restauración de sesión;
+   - login Google interactivo;
+   - onboarding, tema, navegación y responsive;
+   - calculadora: ronda, puntuación, undo, background, restauración e
+     historial;
+   - solitario: Easy, Normal y Hard, cartas legales, pausa y restauración;
+   - online: crear sala, unirse, ready, partida y reconexión;
+   - cambio Wi‑Fi/datos, modo avión, background y force-stop;
+   - ranked: cola, partida, ELO, historial y leaderboard;
+   - deep link HTTPS `/join/<CODE>` cuando exista dominio real verificado.
+
+5. Anota modelo, versión Android, resultado y cualquier captura en el informe
+   de QA. No pegues tokens ni contraseñas.
+
+## Límite actual
+
+La E2E de Node confirma el backend real, pero no puede declarar aprobada la UI
+Android, el login Google ni la reconexión de la aplicación sin hardware o un
+emulador conectado.

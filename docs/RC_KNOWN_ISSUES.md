@@ -1,36 +1,32 @@
-# RC known issues
+# Incidencias conocidas de la RC
 
-Fecha: 2026-08-26.
+Fecha: 2026-08-27
 
-## P0
+## P0 / P1
 
-Ninguno detectado en tests automatizados.
-
-## P1
-
-Ninguno detectado en tests automatizados. La beta no puede considerarse
-completamente verificada hasta desplegar staging HTTPS y ejecutar QA física.
+Ninguna detectada en la E2E externa ni en la validación automatizada local.
 
 ## P2
 
-- APK y AAB actuales están sin firma de producción.
+- La QA física Android está pendiente porque no hay ningún dispositivo
+  conectado por ADB.
+- El APK y el AAB son artefactos de QA sin firma de producción. No deben
+  subirse a Play Console hasta crear el upload keystore.
 
-El frontend web legado permanece deshabilitado y fuera de la ruta de release;
-no se considera una incidencia de esta RC.
+## Pendiente de validación humana
 
-## Dependencias externas pendientes
+- Login Google interactivo en Android.
+- Instalación y recorrido completo en un Android real: onboarding, calculadora,
+  solitario, online, reconexión, cambio de red, background, force-stop y
+  ranked.
+- App Link HTTPS `/join/<CODE>` con dominio real y `assetlinks.json`.
+- Firma, Play Internal Testing, ficha, testers y revisión legal.
 
-- Firebase Authentication está preparado para el proyecto `la-pocha-app`, con
-  la aplicación Android, certificados, proveedores Anonymous/Email/Password/Google
-  y adaptador de verificación. El flujo externo de guest/email/upgrade ya fue
-  verificado con cuentas temporales; falta el login interactivo de Google.
+## Estado
 
-## P3
+El backend externo está `VERIFIED`. La aplicación Flutter compila y sus tests
+están `VERIFIED`. La RC Android completa queda `PENDING HUMAN INPUT` hasta
+realizar las pruebas que necesitan un dispositivo y credenciales de publicación.
 
-Ninguno registrado sin evidencia de QA real.
+El frontend web legado permanece deshabilitado y fuera de esta RC.
 
-## Nota
-
-La ausencia de incidencias P0/P1 aquí significa que no han aparecido en las
-pruebas disponibles; no significa que la infraestructura externa o el
-dispositivo físico estén verificados.
