@@ -197,6 +197,8 @@ export class OnlineGateway
     try {
       const room = this.rooms.view(roomId);
       if (room.status === 'STARTED' && room.gameId) {
+        if (this.hasReplacementSocket(socket, principal.userId, room.gameId))
+          return;
         this.sessions.disconnect(room.gameId, principal.userId);
       }
       const updated = this.rooms.disconnect(roomId, principal.userId);
@@ -750,6 +752,23 @@ export class OnlineGateway
       | { sockets?: Map<string, OnlineSocket> }
       | undefined;
     return namespace?.sockets?.values() ?? [];
+  }
+
+  private hasReplacementSocket(
+    disconnected: OnlineSocket,
+    userId: string,
+    gameId: string,
+  ): boolean {
+    for (const socket of this.localSockets()) {
+      if (
+        socket.id !== disconnected.id &&
+        this.connectedSockets.has(socket.id) &&
+        socket.data.principal?.userId === userId &&
+        socket.data.gameId === gameId
+      )
+        return true;
+    }
+    return false;
   }
 
   private readToken(socket: OnlineSocket): unknown {
