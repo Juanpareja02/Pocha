@@ -200,6 +200,35 @@ describe('GameSession', () => {
     expect(session.snapshot(current).players).toHaveLength(3);
   });
 
+  it('accepts a stale leave intent while keeping stale protection for actions', () => {
+    const session = new GameSession({
+      gameId: 'game-stale-leave',
+      roomId: 'room-stale-leave',
+      players,
+      rules: { ...classicRules(3), roundSequence: [1] },
+      seed: 7,
+      timers: { roundResultMs: 0 },
+    });
+    session.start();
+    const playerId = session.currentState.players[0].id;
+
+    const result = session.dispatch({
+      gameId: session.gameId,
+      type: 'leave',
+      playerId,
+      expectedStateVersion: -1,
+      actionId: 'test:stale-leave',
+    });
+
+    expect(
+      result.snapshot.players.find((player) => player.userId === playerId)
+        ?.status,
+    ).toBe('BOT_CONTROLLED');
+    expect(
+      session.eventLog.some((event) => event.event === 'PLAYER_ABANDONED'),
+    ).toBe(true);
+  });
+
   it('marks a disconnected player who never returns as abandoned', async () => {
     const finished = new Promise<GameFinishedResult>((resolve) => {
       const session = new GameSession({

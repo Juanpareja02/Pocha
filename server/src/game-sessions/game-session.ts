@@ -281,7 +281,14 @@ export class GameSession {
     if (ids.has(command.actionId)) {
       return { snapshot: this.snapshot(command.playerId), duplicate: true };
     }
-    if (command.expectedStateVersion !== this.state.stateVersion) {
+    // Leaving is an idempotent intent and does not depend on the snapshot
+    // contents. Accept it even when another player advanced the game between
+    // the client's sync and the leave command; stale protection remains in
+    // force for state-dependent actions.
+    if (
+      command.type !== 'leave' &&
+      command.expectedStateVersion !== this.state.stateVersion
+    ) {
       throw new SessionError(
         'STALE_STATE',
         'The client state is out of date',
