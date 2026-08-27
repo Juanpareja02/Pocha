@@ -269,6 +269,9 @@ export class OnlineGateway
     void this.withAuth(socket, 'room:ready', () => {
       const room = this.requireSocketRoom(socket, payload?.roomId);
       const updated = this.rooms.ready(socket.data.principal!, room.roomId);
+      // A ready request must acknowledge the initiating client even if the
+      // room broadcast is delayed by the Socket.IO adapter.
+      socket.emit('room:updated', this.publicRoom(updated));
       void this.broadcastRoom(updated);
     });
   }
