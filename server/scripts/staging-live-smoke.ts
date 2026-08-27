@@ -424,6 +424,7 @@ function emitRoomReady(
   roomId: string,
   playerCount: number,
   label = 'unknown',
+  expectedUserId?: string,
 ): Promise<Room> {
   let lastRoom: Room | undefined;
   return new Promise((resolve, reject) => {
@@ -450,7 +451,11 @@ function emitRoomReady(
       if (
         updated.roomId !== roomId ||
         updated.players?.length !== playerCount ||
-        updated.players.some((player) => !player.ready)
+        (expectedUserId
+          ? !updated.players.some(
+              (player) => player.userId === expectedUserId && player.ready,
+            )
+          : updated.players.some((player) => !player.ready))
       )
         return;
       cleanup();
@@ -500,11 +505,15 @@ async function privateRoom(
     client.emit('room:join', { code: room.code });
     await joined;
   }
-  await Promise.all(
-    clients.map((client, index) =>
-      emitRoomReady(client, room.roomId, clients.length, 'private-' + index),
-    ),
-  );
+  for (const [index, client] of clients.entries()) {
+    await emitRoomReady(
+      client,
+      room.roomId,
+      clients.length,
+      'private-' + index,
+      room.players?.[index]?.userId,
+    );
+  }
   const started = clients.map((client, index) =>
     once<Snapshot>(client, 'game:started', 15_000).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : 'unknown';
