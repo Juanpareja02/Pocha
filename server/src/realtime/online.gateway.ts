@@ -698,9 +698,11 @@ export class OnlineGateway
     roomId: string,
     gameId: string,
   ): Promise<void> {
-    const sockets = await this.server.in(roomId).fetchSockets();
-    for (const raw of sockets) {
+    // Render Free runs one process and no Socket.IO adapter is configured.
+    // Avoid an asynchronous adapter lookup when assigning the game context.
+    for (const raw of this.server.sockets.sockets.values()) {
       const socket = raw as unknown as OnlineSocket;
+      if (!socket.rooms.has(roomId)) continue;
       socket.data.gameId = gameId;
     }
   }
