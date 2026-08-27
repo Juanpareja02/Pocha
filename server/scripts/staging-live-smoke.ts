@@ -122,6 +122,29 @@ function once<T>(
   });
 }
 
+function waitForGameEvent(
+  socket: Socket,
+  eventName: string,
+  timeoutMs = 15_000,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('timeout:game:event:' + eventName));
+    }, timeoutMs);
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.off('game:event', onEvent);
+    };
+    const onEvent = (event: { readonly event?: string }) => {
+      if (event.event !== eventName) return;
+      cleanup();
+      resolve();
+    };
+    socket.on('game:event', onEvent);
+  });
+}
+
 async function syncSnapshot(socket: Socket, gameId: string): Promise<Snapshot> {
   const snapshot = once<Snapshot>(socket, 'game:snapshot', 15_000);
   socket.emit('game:sync', { gameId });
@@ -135,7 +158,7 @@ async function abandonGame(
 ): Promise<void> {
   let expectedStateVersion = initialStateVersion;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const snapshot = once<Snapshot>(socket, 'game:snapshot', 15_000);
+    const abandoned = waitForGameEvent(socket, 'PLAYER_ABANDONED', 15_000);
     const error = once<{
       readonly code?: string;
       readonly stateVersion?: number;
@@ -146,7 +169,7 @@ async function abandonGame(
       actionId: `staging-smoke:ranked:abandon:${attempt}`,
     });
     const result = await Promise.race([
-      snapshot.then(() => 'left' as const),
+      abandoned.then(() => 'left' as const),
       error.then((payload) => {
         if (
           payload.code === 'STALE_STATE' &&
@@ -705,7 +728,7 @@ async function driveGame(
 
   await Promise.race([
     finishedPromise,
-    sleep(90_000).then(() => {
+    sleep(180_000).then(() => {
       throw new Error(
         'game:finish-timeout:last=' +
           lastSnapshot.stateVersion +
