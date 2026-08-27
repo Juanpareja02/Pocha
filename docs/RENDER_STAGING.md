@@ -118,6 +118,9 @@ exec npm run start:prod
 ```
 
 `prisma migrate deploy` solo aplica migraciones versionadas y es idempotente.
+El wrapper de arranque reintenta hasta cinco veces adicionales si un rolling
+deploy encuentra temporalmente el advisory lock de Prisma (`P1002`); un fallo
+persistente sigue deteniendo el servicio.
 No se debe configurar ni ejecutar contra staging:
 
 ```text
