@@ -535,6 +535,8 @@ async function driveGame(
     resolveFinished = resolve;
   });
   const active = new Set(ids);
+  const reconnecting = new Set<number>();
+  const pendingReconnectSnapshots = new Map<number, Snapshot>();
   let lastSnapshot: Snapshot = initial[0];
   let lastReportedVersion = -1;
   let lastReportedStatus = '';
@@ -546,9 +548,13 @@ async function driveGame(
         resolveFinished();
       }
     });
-    client.on('game:snapshot', (snapshot: Snapshot) =>
-      drive(client, index, snapshot),
-    );
+    client.on('game:snapshot', (snapshot: Snapshot) => {
+      if (reconnecting.has(index)) {
+        pendingReconnectSnapshots.set(index, snapshot);
+        return;
+      }
+      drive(client, index, snapshot);
+    });
   };
 
   const drive = (client: Socket, index: number, snapshot: Snapshot): void => {
@@ -639,6 +645,7 @@ async function driveGame(
     await sleep(25);
     const replacement = await connect(clientAccounts[index]);
     sockets.add(replacement);
+    reconnecting.add(index);
     // Observe before rejoining so a bot turn cannot advance the game before
     // the replacement socket starts consuming snapshots.
     observe(replacement, index);
@@ -647,16 +654,20 @@ async function driveGame(
     const reconnectSnapshot = await rejoined;
     if (reconnectSnapshot.mySeat !== initial[index].mySeat)
       throw new Error('reconnect:seat-changed');
+    reconnecting.delete(index);
+    const snapshotToDrive =
+      pendingReconnectSnapshots.get(index) ?? reconnectSnapshot;
+    pendingReconnectSnapshots.delete(index);
     // The old socket may have marked the current action as handled just
     // before disconnecting. Let the replacement socket drive that snapshot.
     handled.delete(
       ids[index] +
         ':' +
-        reconnectSnapshot.stateVersion +
+        snapshotToDrive.stateVersion +
         ':' +
-        reconnectSnapshot.state.status,
+        snapshotToDrive.state.status,
     );
-    drive(replacement, index, reconnectSnapshot);
+    drive(replacement, index, snapshotToDrive);
   }
 
   await Promise.race([
