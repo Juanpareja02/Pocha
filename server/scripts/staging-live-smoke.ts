@@ -964,11 +964,22 @@ async function verifyPersistenceAndPrivacy(
 
 async function verifyRankedApi(account: FirebaseAccount): Promise<void> {
   stage = 'ranked-api';
-  const profile = assertStatus(
-    await httpJson('/ranked/me', account.token),
-    200,
-    'ranked-me',
-  );
+  // GAME_FINISHED is published before the asynchronous durable finalization
+  // completes. Poll the read API so this smoke test checks persistence rather
+  // than a transient Neon commit delay.
+  let profileResult: { readonly status: number; readonly body: JsonRecord } =
+    await httpJson('/ranked/me', account.token);
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    if (
+      profileResult.status === 200 &&
+      typeof profileResult.body.rating === 'number' &&
+      profileResult.body.gamesPlayed === 1
+    )
+      break;
+    await sleep(500);
+    profileResult = await httpJson('/ranked/me', account.token);
+  }
+  const profile = assertStatus(profileResult, 200, 'ranked-me');
   if (typeof profile.rating !== 'number' || profile.gamesPlayed !== 1)
     throw new Error('ranked-me:missing-persistent-rating');
   const history = assertStatus(
