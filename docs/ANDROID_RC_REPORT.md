@@ -49,7 +49,7 @@ producción y son solo para QA.
 | Firebase Anonymous/Email | `VERIFIED` | Smoke externo con cuentas temporales |
 | Firebase Google interactivo | `PENDING HUMAN INPUT` | Requiere cuenta QA y Android |
 | Flutter analyze | `VERIFIED` | Sin incidencias |
-| Flutter tests | `VERIFIED` | 62 tests correctos |
+| Flutter tests | `VERIFIED` | 63 tests correctos |
 | APK/AAB staging | `VERIFIED` | Release generado con endpoints públicos |
 | Android físico | `PENDING HUMAN INPUT` | No hay dispositivo en `adb devices` |
 | Firma Android | `PENDING HUMAN INPUT` | Falta upload keystore |

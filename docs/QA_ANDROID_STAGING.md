@@ -7,7 +7,7 @@ Paquete: `com.pocha.mobile`
 ## Evidencia ya verificada
 
 - `flutter analyze`: sin incidencias.
-- `flutter test`: 62 tests correctos.
+- `flutter test`: 63 tests correctos.
 - APK y AAB release generados con Firebase Android real, API HTTPS y
   Socket.IO/WSS de Render staging.
 - Smoke E2E externo del backend: `VERIFIED` para Auth, salas, partidas,

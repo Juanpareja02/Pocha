@@ -12,7 +12,7 @@ El backend NestJS está desplegado en Render Free con `APP_ENV=staging` y
 usa fallback en memoria. `/health` y `/health/ready` responden correctamente.
 
 El smoke externo final terminó con `status: passed` usando el commit de
-servidor `bc07e0b`. La prueba limpia sus datos sintéticos al terminar.
+servidor `d8850cd`. La prueba limpia sus datos sintéticos al terminar.
 
 ## Resultado por área
 
@@ -27,7 +27,7 @@ servidor `bc07e0b`. La prueba limpia sus datos sintéticos al terminar.
 | Firebase guest upgrade | `VERIFIED` | Identidad e historial conservados |
 | Firebase Google interactivo | `PENDING HUMAN INPUT` | Requiere cuenta QA y Android |
 | Flutter analyze | `VERIFIED` | Sin incidencias |
-| Flutter test | `VERIFIED` | 62 tests correctos |
+| Flutter test | `VERIFIED` | 63 tests correctos |
 | APK/AAB staging | `VERIFIED` | Generados con `com.pocha.mobile` y Render |
 | Android físico | `PENDING HUMAN INPUT` | `adb devices` está vacío |
 | Firma y Play Internal | `PENDING HUMAN INPUT` | Faltan keystore, Play y testers |
@@ -56,7 +56,7 @@ Se verificó localmente:
 
 ```text
 flutter analyze                    OK
-flutter test                       62 tests OK
+flutter test                       63 tests OK
 dart format --set-exit-if-changed .   OK
 ```
 
@@ -85,6 +85,10 @@ correcto.
 - Confirmación directa de `room:ready`.
 - Protección frente a un `disconnect` antiguo que pisa una reconexión nueva.
 - Espera explícita de la transacción ranked antes de verificar `/ranked/me`.
+- Validación exacta de cuatro jugadores, cuatro resultados y cuatro entradas
+  de rating por partida ranked, sin duplicados.
+- Bloqueo de endpoints privados en servidor, Flutter y script de release; el
+  cliente evita sockets duplicados al reintentar tras cold start o timeout.
 
 ## Sin coste
 

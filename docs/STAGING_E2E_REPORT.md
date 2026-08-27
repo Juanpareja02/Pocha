@@ -1,7 +1,7 @@
 # Informe E2E externo de staging
 
 Fecha: 2026-08-27  
-Backend: `bc07e0b`  
+Backend: `d8850cd`
 URL pública: `https://pocha-staging.onrender.com`  
 Proveedor: Render Free, Frankfurt
 
@@ -20,7 +20,8 @@ Checks ejecutados:
 - reconexión conservando asiento, abandono explícito y recuperación;
 - matchmaking casual y ranked de cuatro jugadores;
 - persistencia de partidas, jugadores, resultados, eventos, rating, historial,
-  temporada y estadísticas en Neon;
+  temporada y estadísticas en Neon, incluyendo cuatro filas ranked y cuatro
+  entradas de historial sin duplicados;
 - `/ranked/me`, `/ranked/history` y leaderboard sin campos privados;
 - exportación sin tokens/IDs del proveedor y borrado con anonymización;
 - limpieza de cuentas Firebase, registros sintéticos PostgreSQL y claves Redis
@@ -39,6 +40,10 @@ prueba visual/interactiva de Flutter en Android.
   del mismo jugador y partida.
 - El smoke espera la confirmación de persistencia ranked en Neon antes de leer
   rating e historial.
+- Backend, cliente Flutter y script de release rechazan endpoints locales,
+  privados o de enlace local fuera de desarrollo.
+- El cliente evita sockets duplicados al reintentar tras cold start, timeout o
+  pérdida de red, y reanuda la sala con un snapshot autoritativo.
 
 ## Estado final
 
@@ -49,7 +54,7 @@ prueba visual/interactiva de Flutter en Android.
 | Upstash Redis | `VERIFIED` | Colas, salas, sesiones, rate limiting y limpieza |
 | Firebase Anonymous + Email/Password | `VERIFIED` | Flujo externo automatizado |
 | Firebase Google interactivo | `PENDING HUMAN INPUT` | Requiere cuenta QA y dispositivo Android |
-| Flutter analyze/test | `VERIFIED` | Analyze sin incidencias y 62 tests correctos |
+| Flutter analyze/test | `VERIFIED` | Analyze sin incidencias y 63 tests correctos |
 | APK/AAB staging | `VERIFIED` | Generados con `com.pocha.mobile` y Render staging |
 | Android físico | `PENDING HUMAN INPUT` | `adb devices` no muestra dispositivos |
 | Firma Android / Play Internal | `PENDING HUMAN INPUT` | Faltan keystore, cuenta Play y testers |
@@ -60,4 +65,3 @@ prueba visual/interactiva de Flutter en Android.
 La configuración validada usa los planes gratuitos de Render, Neon y Upstash.
 Railway no forma parte del despliegue activo. Los límites, suspensión por
 inactividad y políticas de cada plan gratuito siguen aplicando.
-
