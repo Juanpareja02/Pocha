@@ -47,6 +47,26 @@ const baseUrl = required('STAGING_BASE_URL').replace(/\/$/, '');
 const firebaseApiKey = required('POCHA_FIREBASE_WEB_API_KEY');
 const redisUrl = required('REDIS_URL');
 const redisNamespace = required('REDIS_KEY_PREFIX');
+const parsedBaseUrl = new URL(baseUrl);
+const reservedHosts = new Set([
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '10.0.2.2',
+  'example.com',
+  'example.org',
+  'example.net',
+]);
+if (
+  parsedBaseUrl.protocol !== 'https:' ||
+  parsedBaseUrl.hostname.length === 0 ||
+  reservedHosts.has(parsedBaseUrl.hostname.toLowerCase()) ||
+  parsedBaseUrl.hostname.endsWith('.invalid')
+) {
+  throw new Error(
+    'staging live smoke requires a public HTTPS endpoint, never localhost or a reserved host',
+  );
+}
 if (
   process.env.APP_ENV !== 'staging' ||
   process.env.NODE_ENV !== 'production'
@@ -152,6 +172,25 @@ async function roomEvent<T>(
   const error = once<{ readonly code?: string; readonly message?: string }>(
     socket,
     'game:error',
+  ).then((payload) => {
+    throw new Error(
+      `${label}:error:${payload.code ?? 'unknown'}:${payload.message ?? 'unknown'}`,
+    );
+  });
+  return Promise.race([expected, error]);
+}
+
+function socketEventOrError<T>(
+  socket: Socket,
+  event: string,
+  label: string,
+  timeoutMs = 15_000,
+): Promise<T> {
+  const expected = once<T>(socket, event, timeoutMs);
+  const error = once<{ readonly code?: string; readonly message?: string }>(
+    socket,
+    'game:error',
+    timeoutMs,
   ).then((payload) => {
     throw new Error(
       `${label}:error:${payload.code ?? 'unknown'}:${payload.message ?? 'unknown'}`,
@@ -278,15 +317,25 @@ async function httpJson(
   const headers = new Headers(init.headers);
   headers.set('accept', 'application/json');
   if (token) headers.set('authorization', `Bearer ${token}`);
-  const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
-  const text = await response.text();
-  let body: JsonRecord = {};
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
   try {
-    body = (JSON.parse(text) as JsonRecord) ?? {};
-  } catch {
-    body = { raw: text.slice(0, 100) };
+    const response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let body: JsonRecord = {};
+    try {
+      body = (JSON.parse(text) as JsonRecord) ?? {};
+    } catch {
+      body = { raw: text.slice(0, 100) };
+    }
+    return { status: response.status, body };
+  } finally {
+    clearTimeout(timer);
   }
-  return { status: response.status, body };
 }
 
 function assertStatus(
@@ -470,7 +519,9 @@ async function driveGame(
   } = {},
 ): Promise<void> {
   const gameId = initial[0].gameId;
-  const ids = clientAccounts.map((account) => canonical(account.uid));
+  // AuthService resolves linked guest/permanent Firebase identities to the
+  // same canonical User.id. Use the server snapshot IDs instead of raw UIDs.
+  const ids = initial.map((snapshot) => snapshot.myPlayerId);
   const handled = new Set<string>();
   let invalidSent = false;
   let invalidCode: string | undefined;
@@ -631,7 +682,13 @@ async function queueMatch(
   const joinEvent = ranked ? 'ranked:join' : 'matchmaking:join';
   const queued = clients
     .slice(0, clients.length - 1)
-    .map((client) => once(client, event));
+    .map((client, index) =>
+      socketEventOrError(
+        client,
+        event,
+        `${ranked ? 'ranked' : 'casual'}-queue:${index}`,
+      ),
+    );
   for (const client of clients.slice(0, clients.length - 1)) {
     client.emit(
       joinEvent,
@@ -641,8 +698,12 @@ async function queueMatch(
     );
   }
   await Promise.all(queued);
-  const started = clients.map((client) =>
-    once<Snapshot>(client, 'game:started', 15_000),
+  const started = clients.map((client, index) =>
+    socketEventOrError<Snapshot>(
+      client,
+      'game:started',
+      `${ranked ? 'ranked' : 'casual'}-game-start:${index}`,
+    ),
   );
   const last = clients[clients.length - 1];
   last.emit(
@@ -660,10 +721,43 @@ async function queueMatch(
 
 async function verifyHealthAndAuth(): Promise<void> {
   stage = 'health-and-auth';
-  const live = await httpJson('/health/live');
-  assertStatus(live, 200, 'health-live');
-  const ready = await httpJson('/health/ready');
-  assertStatus(ready, 200, 'health-ready');
+  let liveResult: { readonly status: number; readonly body: JsonRecord } | null =
+    null;
+  let readyResult: { readonly status: number; readonly body: JsonRecord } | null =
+    null;
+  let lastHealthFailure = 'unknown';
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    try {
+      liveResult = await httpJson('/health/live');
+      readyResult = await httpJson('/health/ready');
+      const environment = liveResult.body.environment;
+      if (
+        liveResult.status === 200 &&
+        readyResult.status === 200 &&
+        environment === 'staging'
+      ) {
+        break;
+      }
+      lastHealthFailure = `live:${liveResult.status}:ready:${readyResult.status}:environment:${String(environment)}`;
+    } catch (error) {
+      lastHealthFailure = error instanceof Error ? error.message : 'request-error';
+    }
+    if (attempt < 14) await sleep(5_000);
+  }
+  if (!liveResult || !readyResult || liveResult.status !== 200 || readyResult.status !== 200)
+    throw new Error(`health-startup-timeout:${lastHealthFailure}`);
+  const live = assertStatus(liveResult, 200, 'health-live');
+  if (live.environment !== 'staging')
+    throw new Error('health-live:not-staging');
+  const readyBody = assertStatus(readyResult, 200, 'health-ready');
+  const checks = readyBody.checks as JsonRecord | undefined;
+  if (
+    readyBody.status !== 'ready' ||
+    checks?.database !== 'ok' ||
+    checks?.redis !== 'ok'
+  ) {
+    throw new Error('health-ready:dependencies-not-ready');
+  }
   const guest = await createAnonymousAccount();
   accounts.push(guest);
   const permanent = await createEmailAccount(0);
@@ -675,6 +769,22 @@ async function verifyHealthAndAuth(): Promise<void> {
   );
   if ((guestProfile.user as JsonRecord).isGuest !== true)
     throw new Error('guest-me:not-guest');
+  if (typeof (guestProfile.user as JsonRecord).username !== 'string')
+    throw new Error('guest-me:missing-username');
+  const stats = assertStatus(
+    await httpJson('/users/me/stats', guest.token),
+    200,
+    'guest-stats',
+  );
+  if (typeof (stats.stats as JsonRecord | undefined)?.gamesPlayed !== 'number')
+    throw new Error('guest-stats:invalid-shape');
+  const season = assertStatus(
+    await httpJson('/seasons/current'),
+    200,
+    'current-season',
+  );
+  if (typeof season.id !== 'string')
+    throw new Error('current-season:invalid-shape');
   userIds.add(canonical(guest.uid));
   const invalid = await httpJson('/auth/me', 'invalid-token');
   if (invalid.status !== 401) throw new Error('invalid-token:not-rejected');
@@ -921,7 +1031,10 @@ async function run(): Promise<void> {
     guestHistoryGame.snapshots,
   );
   await upgradeGuestAfterHistory(guestHistoryGame.snapshots[0].gameId);
-  const threePlayers = [accounts[0], accounts[2], accounts[3]];
+  // The backend preserves the guest's canonical User.id, but ranked must use
+  // the permanent Firebase token that completed the upgrade.
+  const upgradedAccount = accounts[1];
+  const threePlayers = [upgradedAccount, accounts[2], accounts[3]];
   const fourPlayers = [...threePlayers, accounts[4]];
   const privateGame = await privateRoom(threePlayers);
   const stale = once<{ readonly code?: string }>(
@@ -953,7 +1066,7 @@ async function run(): Promise<void> {
   });
   await sleep(500);
   await verifyRankedApi(fourPlayers[3]);
-  await verifyPersistenceAndPrivacy(accounts[0]);
+  await verifyPersistenceAndPrivacy(upgradedAccount);
   await verifyDatabaseArtifacts();
   await verifyAccountDeletion();
 }

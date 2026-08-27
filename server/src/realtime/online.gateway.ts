@@ -711,7 +711,16 @@ export class OnlineGateway
       }
       created.session.start();
       void this.broadcastRoom(started);
-    } catch {
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'match_start_failed',
+          mode: room.mode ?? 'casual',
+          roomId: room.roomId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }),
+      );
       return;
     }
   }
