@@ -28,13 +28,39 @@ function Assert-PublicHttpsUrl([string]$name, [string]$value) {
     throw "$name must be a valid URL"
   }
   $uriHost = $parsed.Host.ToLowerInvariant()
+  function Test-PrivateIpLiteral([string]$candidateHost) {
+    $address = $null
+    if (-not [System.Net.IPAddress]::TryParse($candidateHost, [ref]$address)) {
+      return $false
+    }
+    if ($address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) {
+      $bytes = $address.GetAddressBytes()
+      $first = [int]$bytes[0]
+      $second = [int]$bytes[1]
+      return $first -eq 0 -or
+        $first -eq 10 -or
+        $first -eq 127 -or
+        ($first -eq 169 -and $second -eq 254) -or
+        ($first -eq 172 -and $second -ge 16 -and $second -le 31) -or
+        ($first -eq 192 -and $second -eq 168)
+    }
+    $normalizedHost = $candidateHost.ToLowerInvariant()
+    return [System.Net.IPAddress]::IsLoopback($address) -or
+      $normalizedHost.StartsWith('fc') -or
+      $normalizedHost.StartsWith('fd') -or
+      $normalizedHost.StartsWith('fe8') -or
+      $normalizedHost.StartsWith('fe9') -or
+      $normalizedHost.StartsWith('fea') -or
+      $normalizedHost.StartsWith('feb')
+  }
   $reservedHost =
     $uriHost -eq 'localhost' -or
     @('127.0.0.1', '0.0.0.0', '10.0.2.2', 'example.com', 'example.org', 'example.net', 'invalid') -contains $uriHost -or
     $uriHost.EndsWith('.example.com') -or
     $uriHost.EndsWith('.example.org') -or
     $uriHost.EndsWith('.example.net') -or
-    $uriHost.EndsWith('.invalid')
+    $uriHost.EndsWith('.invalid') -or
+    (Test-PrivateIpLiteral $uriHost)
   if ($parsed.Scheme -ne 'https' -or $reservedHost) {
     throw "$name must use a public HTTPS host for release builds"
   }

@@ -80,6 +80,14 @@ describe('runtime configuration', () => {
         DATABASE_URL: 'postgresql://pocha:secret@db.example.com:5432/pocha',
       }),
     ).toThrow(/reserved host/);
+    for (const host of ['192.168.1.20', '10.20.0.4', '172.16.0.8']) {
+      expect(() =>
+        validateEnvironment({
+          ...external,
+          PUBLIC_BASE_URL: `https://${host}`,
+        }),
+      ).toThrow(/reserved host/);
+    }
   });
 
   it('requires the production Node environment for staging and production', () => {

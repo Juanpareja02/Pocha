@@ -21,4 +21,16 @@ void main() {
       throwsA(isA<StateError>()),
     );
   });
+
+  test('fails closed for private network endpoints', () {
+    expect(
+      () => validateMobileRuntimeConfig(
+        release: true,
+        authMode: 'external',
+        apiUrl: 'https://192.168.1.20',
+        socketUrl: 'https://api.staging.dev',
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
 }

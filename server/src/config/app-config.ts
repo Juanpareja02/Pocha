@@ -46,6 +46,37 @@ const APP_ENVIRONMENTS: readonly AppEnvironment[] = [
 ];
 const LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
 
+function isPrivateIpLiteral(hostname: string): boolean {
+  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  const octets = host.split('.');
+  if (
+    octets.length === 4 &&
+    octets.every((octet) => /^\d+$/.test(octet))
+  ) {
+    const values = octets.map(Number);
+    if (values.every((value) => value >= 0 && value <= 255)) {
+      const [first, second] = values;
+      return (
+        first === 0 ||
+        first === 10 ||
+        first === 127 ||
+        (first === 169 && second === 254) ||
+        (first === 172 && second >= 16 && second <= 31) ||
+        (first === 192 && second === 168)
+      );
+    }
+  }
+  return (
+    host === '::1' ||
+    host.startsWith('fc') ||
+    host.startsWith('fd') ||
+    host.startsWith('fe8') ||
+    host.startsWith('fe9') ||
+    host.startsWith('fea') ||
+    host.startsWith('feb')
+  );
+}
+
 function isReservedHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/\.$/, '');
   return (
@@ -60,7 +91,8 @@ function isReservedHost(hostname: string): boolean {
     host === 'example.org' ||
     host.endsWith('.example.org') ||
     host === 'example.net' ||
-    host.endsWith('.example.net')
+    host.endsWith('.example.net') ||
+    isPrivateIpLiteral(host)
   );
 }
 

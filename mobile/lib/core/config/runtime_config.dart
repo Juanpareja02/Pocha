@@ -64,11 +64,37 @@ void _assertPublicHttps(String name, String value) {
       host.endsWith('.example.com') ||
       host.endsWith('.example.org') ||
       host.endsWith('.example.net') ||
-      host.endsWith('.invalid');
+      host.endsWith('.invalid') ||
+      _isPrivateIpLiteral(host);
   if (parsed == null ||
       parsed.scheme != 'https' ||
       host.isEmpty ||
       reservedHost) {
     throw StateError('$name must be a real public HTTPS URL');
   }
+}
+
+bool _isPrivateIpLiteral(String host) {
+  final octets = host.split('.');
+  if (octets.length == 4 &&
+      octets.every((octet) => int.tryParse(octet) != null)) {
+    final values = octets.map(int.parse).toList(growable: false);
+    if (values.every((value) => value >= 0 && value <= 255)) {
+      final first = values[0];
+      final second = values[1];
+      return first == 0 ||
+          first == 10 ||
+          first == 127 ||
+          (first == 169 && second == 254) ||
+          (first == 172 && second >= 16 && second <= 31) ||
+          (first == 192 && second == 168);
+    }
+  }
+  return host == '::1' ||
+      host.startsWith('fc') ||
+      host.startsWith('fd') ||
+      host.startsWith('fe8') ||
+      host.startsWith('fe9') ||
+      host.startsWith('fea') ||
+      host.startsWith('feb');
 }

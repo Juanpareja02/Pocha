@@ -1049,8 +1049,9 @@ async function verifyDatabaseArtifacts(): Promise<void> {
   stage = 'database-artifacts';
   const games = await prisma.game.findMany({
     where: { id: { in: [...gameIds] } },
+    include: { players: true },
   });
-  if (games.length < 3 || games.some((game) => game.status !== 'FINISHED'))
+  if (games.length !== 4 || games.some((game) => game.status !== 'FINISHED'))
     throw new Error('database:finished-games-not-persisted');
   const users = await prisma.user.findMany({
     where: { id: { in: [...userIds] } },
@@ -1064,17 +1065,29 @@ async function verifyDatabaseArtifacts(): Promise<void> {
   const gamePlayers = await prisma.gamePlayer.count({
     where: { gameId: { in: [...gameIds] } },
   });
-  if (gamePlayers < games.length * 3)
+  const expectedPlayerRows = games.reduce(
+    (total, game) => total + game.players.length,
+    0,
+  );
+  if (gamePlayers !== expectedPlayerRows)
     throw new Error('database:game-players-not-persisted');
   const results = await prisma.gameResult.count({
     where: { gameId: { in: [...gameIds] } },
   });
-  if (results < games.length * 3)
+  if (results !== expectedPlayerRows)
     throw new Error('database:results-not-persisted');
-  const ratingHistory = await prisma.ratingHistory.count({
-    where: { userId: { in: [...userIds] } },
+  const rankedGames = games.filter((game) => game.mode === 'ranked');
+  if (rankedGames.length !== 1 || rankedGames[0].players.length !== 4)
+    throw new Error('database:ranked-game-shape-invalid');
+  const rankedResults = await prisma.gameResult.count({
+    where: { gameId: rankedGames[0].id },
   });
-  if (ratingHistory < 4)
+  if (rankedResults !== 4)
+    throw new Error('database:ranked-results-not-idempotent');
+  const ratingHistory = await prisma.ratingHistory.count({
+    where: { gameId: rankedGames[0].id },
+  });
+  if (ratingHistory !== 4)
     throw new Error('database:rating-history-not-persisted');
   const season = await prisma.rankedSeason.findUnique({
     where: { id: 'season_1' },

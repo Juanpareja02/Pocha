@@ -41,6 +41,7 @@ class RemoteGameSession extends ChangeNotifier
   final String token;
   final String userId;
   io.Socket? _socket;
+  Future<void>? _connectOperation;
   RemoteGameState? _state;
   RemoteRoomView? _room;
   RemoteRankedQueueState? _rankedQueue;
@@ -57,8 +58,24 @@ class RemoteGameSession extends ChangeNotifier
   RemoteGameError? get error => _error;
   bool get connected => _connectionStatus == RemoteConnectionStatus.connected;
 
-  Future<void> connect() async {
-    if (connected) return;
+  Future<void> connect() {
+    if (connected) return Future<void>.value();
+    final pending = _connectOperation;
+    if (pending != null) return pending;
+    final previous = _socket;
+    if (previous != null) {
+      previous.disconnect();
+      previous.dispose();
+      _socket = null;
+    }
+    final operation = _connect();
+    _connectOperation = operation;
+    return operation.whenComplete(() {
+      if (identical(_connectOperation, operation)) _connectOperation = null;
+    });
+  }
+
+  Future<void> _connect() async {
     _connectionStatus = RemoteConnectionStatus.connecting;
     _error = null;
     notifyListeners();
@@ -75,7 +92,10 @@ class RemoteGameSession extends ChangeNotifier
           .disableAutoConnect()
           .build(),
     );
+    var connectedOnce = false;
     socket.onConnect((_) {
+      if (!identical(_socket, socket)) return;
+      connectedOnce = true;
       _connectionStatus = RemoteConnectionStatus.connected;
       notifyListeners();
       final room = _room;
@@ -83,10 +103,12 @@ class RemoteGameSession extends ChangeNotifier
       if (!completer.isCompleted) completer.complete();
     });
     socket.onDisconnect((_) {
+      if (!identical(_socket, socket)) return;
       _connectionStatus = RemoteConnectionStatus.reconnecting;
       notifyListeners();
     });
     socket.onConnectError((error) {
+      if (!identical(_socket, socket)) return;
       final text = '$error';
       final protocolMismatch = text.toLowerCase().contains('protocol');
       _error = RemoteGameError(
@@ -95,9 +117,16 @@ class RemoteGameSession extends ChangeNotifier
             ? 'Necesitas actualizar La Pocha para seguir jugando online.'
             : 'No se ha podido conectar con el servidor. Comprueba tu conexión.',
       );
-      _connectionStatus = RemoteConnectionStatus.disconnected;
+      _connectionStatus = connectedOnce
+          ? RemoteConnectionStatus.reconnecting
+          : RemoteConnectionStatus.disconnected;
       notifyListeners();
-      if (!completer.isCompleted) completer.completeError(error);
+      if (!connectedOnce && !completer.isCompleted) {
+        socket.disconnect();
+        socket.dispose();
+        if (identical(_socket, socket)) _socket = null;
+        completer.completeError(error);
+      }
     });
     socket.on('room:created', _onRoom);
     socket.on('room:joined', _onRoom);
@@ -115,6 +144,11 @@ class RemoteGameSession extends ChangeNotifier
         onTimeout: () => throw TimeoutException('Connection timeout'),
       );
     } on TimeoutException {
+      if (identical(_socket, socket)) {
+        socket.disconnect();
+        socket.dispose();
+        _socket = null;
+      }
       _error = const RemoteGameError(
         code: 'TIMEOUT',
         message: 'El servidor está tardando demasiado. Inténtalo de nuevo.',
@@ -232,8 +266,17 @@ class RemoteGameSession extends ChangeNotifier
 
   @override
   Future<void> resume() async {
+    try {
+      if (!connected) await connect();
+    } catch (_) {
+      return;
+    }
+    // Rejoining the room on connect delivers the authoritative snapshot. A
+    // direct sync is safe only when no room join is pending.
     final state = _state;
-    if (state != null) _socket?.emit('game:sync', {'gameId': state.gameId});
+    if (state != null && _room == null && connected) {
+      _socket?.emit('game:sync', {'gameId': state.gameId});
+    }
   }
 
   @override
@@ -248,6 +291,7 @@ class RemoteGameSession extends ChangeNotifier
   void dispose() {
     _socket?.dispose();
     _socket = null;
+    _connectOperation = null;
     super.dispose();
   }
 
