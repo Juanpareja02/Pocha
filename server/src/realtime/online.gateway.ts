@@ -108,7 +108,22 @@ export class OnlineGateway
         this.metrics.setGauge('active_games', this.activeGames);
         this.clearInvalidAttemptsForGame(update.gameId);
       }
-      void this.broadcastGame(update.gameId, update.event, update.stateVersion);
+      void this.broadcastGame(
+        update.gameId,
+        update.event,
+        update.stateVersion,
+      ).catch((error: unknown) => {
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            event: 'game_broadcast_failed',
+            gameId: update.gameId,
+            gameEvent: update.event,
+            stateVersion: update.stateVersion,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          }),
+        );
+      });
     });
   }
 
@@ -665,6 +680,7 @@ export class OnlineGateway
     stateVersion: number,
   ): Promise<void> {
     const session = this.sessions.get(gameId);
+    if (!session) return;
     const sockets = await this.server.fetchSockets();
     for (const raw of sockets) {
       const socket = raw as unknown as OnlineSocket;

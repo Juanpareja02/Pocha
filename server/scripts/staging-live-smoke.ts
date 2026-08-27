@@ -535,6 +535,7 @@ async function driveGame(
     resolveFinished = resolve;
   });
   const active = new Set(ids);
+  let lastSnapshot: Snapshot = initial[0];
   let lastReportedVersion = -1;
   let lastReportedStatus = '';
 
@@ -551,6 +552,7 @@ async function driveGame(
   };
 
   const drive = (client: Socket, index: number, snapshot: Snapshot): void => {
+    lastSnapshot = snapshot;
     const userId = ids[index];
     if (!active.has(userId)) return;
     const state = snapshot.state;
@@ -649,7 +651,9 @@ async function driveGame(
   await Promise.race([
     finishedPromise,
     sleep(90_000).then(() => {
-      throw new Error('game:finish-timeout');
+      throw new Error(
+        \`game:finish-timeout:last=\${lastSnapshot.stateVersion}:\${lastSnapshot.state.status}\`,
+      );
     }),
   ]);
   if (
